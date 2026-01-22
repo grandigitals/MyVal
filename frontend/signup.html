@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up - My Val</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="icon" href="assets/logo.png">
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <a href="index.html" class="logo">
+            <img src="assets/logo.png" alt="My Val" class="logo-img">
+        </a>
+        <div class="nav-links">
+            <a href="login.html" class="nav-link">Login</a>
+        </div>
+    </nav>
+
+    <!-- Signup Form -->
+    <section class="auth-section">
+        <div class="auth-container">
+            <div class="auth-header">
+                <img src="assets/logo.png" alt="My Val" class="auth-logo-img">
+                <h1 class="auth-title">Create Account</h1>
+                <p class="auth-subtitle">Join My Val and find your Valentine</p>
+            </div>
+
+            <form class="auth-form card card-glass" id="signup-form">
+                <div class="form-group">
+                    <label class="form-label">Full Name *</label>
+                    <input type="text" class="form-input" id="fullName" name="fullName"
+                        placeholder="Enter your full name" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Email *</label>
+                    <input type="email" class="form-input" id="email" name="email" placeholder="Enter your email"
+                        required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Password *</label>
+                    <input type="password" class="form-input" id="password" name="password"
+                        placeholder="Create a password" minlength="6" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Phone Number *</label>
+                    <input type="tel" class="form-input" id="phoneNumber" name="phoneNumber"
+                        placeholder="e.g. 08012345678" required>
+                    <small class="text-muted text-sm">This will be shared with your match on reveal day</small>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Gender *</label>
+                    <select class="form-select" id="gender" name="gender" required>
+                        <option value="">Select your gender</option>
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">City *</label>
+                    <select class="form-select" id="city" name="city" required>
+                        <option value="">Select your city</option>
+                        <option value="Lagos">Lagos</option>
+                        <option value="Abuja">Abuja</option>
+                        <option value="Kano">Kano</option>
+                        <option value="Ibadan">Ibadan</option>
+                        <option value="Port Harcourt">Port Harcourt</option>
+                        <option value="Benin City">Benin City</option>
+                        <option value="Kaduna">Kaduna</option>
+                        <option value="Enugu">Enugu</option>
+                        <option value="Zaria">Zaria</option>
+                        <option value="Ilorin">Ilorin</option>
+                        <option value="Jos">Jos</option>
+                        <option value="Owerri">Owerri</option>
+                        <option value="Abeokuta">Abeokuta</option>
+                        <option value="Onitsha">Onitsha</option>
+                        <option value="Warri">Warri</option>
+                        <option value="Calabar">Calabar</option>
+                        <option value="Uyo">Uyo</option>
+                        <option value="Asaba">Asaba</option>
+                        <option value="Akure">Akure</option>
+                        <option value="Bauchi">Bauchi</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Date of Birth *</label>
+                    <input type="date" class="form-input" id="dateOfBirth" name="dateOfBirth" required>
+                </div>
+
+                <div class="form-group">
+                    <div class="checkbox-group">
+                        <input type="checkbox" class="checkbox-input" id="ageConfirm" name="ageConfirm" required>
+                        <label class="checkbox-label" for="ageConfirm">
+                            I confirm that I am 18 years or older and agree to the
+                            <a href="terms.html">Terms of Service</a> and
+                            <a href="privacy.html">Privacy Policy</a>
+                        </label>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-large" style="width: 100%" id="signup-btn">
+                    Create Account
+                </button>
+
+                <p id="error-message" class="form-error" style="display: none;"></p>
+            </form>
+
+            <p class="auth-footer">
+                Already have an account? <a href="login.html">Login</a>
+            </p>
+        </div>
+    </section>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/firebase-init.js"></script>
+    <script src="js/signup.js"></script>
+</body>
+
+</html>

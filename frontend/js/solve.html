@@ -1,0 +1,16 @@
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+<script>
+    // This script starts Firebase immediately using the config you saved
+    // Wait for config to load, then start
+    window.addEventListener('load', function () {
+        if (typeof CONFIG !== 'undefined' && CONFIG.FIREBASE_CONFIG) {
+            firebase.initializeApp(CONFIG.FIREBASE_CONFIG);
+            console.log("Firebase Started Successfully!");
+        } else {
+            console.error("Config not found!");
+        }
+    });
+</script>

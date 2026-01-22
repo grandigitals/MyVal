@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - My Val</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="icon" href="assets/logo.png">
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <a href="dashboard.html" class="logo">
+            <img src="assets/logo.png" alt="My Val" class="logo-img">
+        </a>
+        <div class="nav-links">
+            <button class="btn btn-secondary" id="logout-btn">Logout</button>
+        </div>
+    </nav>
+
+    <!-- Dashboard Content -->
+    <section class="dashboard-section">
+        <div class="container">
+            <div class="dashboard-header">
+                <p class="dashboard-welcome">Welcome back,</p>
+                <h1 class="dashboard-name" id="user-name">Loading...</h1>
+            </div>
+
+            <div class="status-grid">
+                <div class="status-card card card-glass">
+                    <div class="status-card-header">
+                        <div class="status-icon">👤</div>
+                        <div>
+                            <p class="status-label">Profile Status</p>
+                            <p class="status-value"><span class="badge badge-success">✓ Complete</span></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="status-card card card-glass">
+                    <div class="status-card-header">
+                        <div class="status-icon">💳</div>
+                        <div>
+                            <p class="status-label">Payment Status</p>
+                            <p class="status-value" id="payment-status">
+                                <span class="badge badge-warning">Payment Required</span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="status-card card card-glass">
+                    <div class="status-card-header">
+                        <div class="status-icon">💗</div>
+                        <div>
+                            <p class="status-label">Match Status</p>
+                            <p class="status-value" id="match-status">
+                                <span class="badge badge-error">Awaiting Payment</span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-center mt-xl" id="action-container">
+                <a href="payment.html" class="btn btn-primary btn-large" id="action-btn">Complete Payment</a>
+            </div>
+
+            <div class="card mt-xl">
+                <h3>Your Profile</h3>
+                <div class="mt-lg" id="profile-details">
+                    <p><strong>Email:</strong> <span id="profile-email">-</span></p>
+                    <p><strong>Phone:</strong> <span id="profile-phone">-</span></p>
+                    <p><strong>City:</strong> <span id="profile-city">-</span></p>
+                    <p><strong>Gender:</strong> <span id="profile-gender">-</span></p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-links">
+            <a href="terms.html" class="footer-link">Terms</a>
+            <a href="privacy.html" class="footer-link">Privacy</a>
+        </div>
+    </footer>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/firebase-init.js"></script>
+    <script src="js/dashboard.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="My Val - Valentine's Day matchmaking. No chatting, no swiping. Just your perfect match revealed on Valentine's season.">
+    <title>My Val - We'll Find Your Valentine</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="icon" href="assets/logo.png">
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <a href="index.html" class="logo">
+            <img src="assets/logo.png" alt="My Val" class="logo-img">
+        </a>
+        <div class="nav-links">
+            <a href="#" class="nav-link" onclick="openModal('login-modal')">Login</a>
+            <button class="btn btn-primary" onclick="openModal('signup-modal')">Get Started</button>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-content">
+            <img src="assets/logo.png" alt="My Val" class="hero-logo float">
+
+            <h1 class="hero-title">We'll Find Your<br>Valentine.</h1>
+
+            <p class="hero-subtitle">
+                No chatting. No swiping. No endless scrolling.<br>
+                Just one perfect match for Valentine's season.<br>
+                Sign up, and let us find your Valentine.
+            </p>
+
+            <div class="hero-cta">
+                <button class="btn btn-primary btn-large" onclick="openModal('signup-modal')">
+                    Get My Val 💗
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Login Modal -->
+    <div class="modal-overlay" id="login-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Welcome Back</h2>
+                <button class="modal-close" onclick="closeModal('login-modal')">&times;</button>
+            </div>
+            <form id="login-form">
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" class="form-input" id="login-email" placeholder="Enter your email" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <input type="password" class="form-input" id="login-password" placeholder="Enter your password"
+                        required>
+                </div>
+                <button type="submit" class="btn btn-primary btn-large" style="width: 100%" id="login-btn">
+                    Login
+                </button>
+                <p id="login-error" class="form-error" style="display: none;"></p>
+            </form>
+            <p class="auth-footer mt-lg">
+                Don't have an account? <a href="#" onclick="switchModal('login-modal', 'signup-modal')">Sign up</a>
+            </p>
+        </div>
+    </div>
+
+    <!-- Signup Modal -->
+    <div class="modal-overlay" id="signup-modal">
+        <div class="modal modal-large">
+            <div class="modal-header">
+                <h2>Create Account</h2>
+                <button class="modal-close" onclick="closeModal('signup-modal')">&times;</button>
+            </div>
+            <form id="signup-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Full Name *</label>
+                        <input type="text" class="form-input" id="signup-fullName" placeholder="Enter your full name"
+                            required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Email *</label>
+                        <input type="email" class="form-input" id="signup-email" placeholder="Enter your email"
+                            required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Password *</label>
+                        <input type="password" class="form-input" id="signup-password" placeholder="Create a password"
+                            minlength="6" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Phone Number *</label>
+                        <input type="tel" class="form-input" id="signup-phone" placeholder="e.g. 08012345678" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Gender *</label>
+                        <select class="form-select" id="signup-gender" required>
+                            <option value="">Select gender</option>
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">City *</label>
+                        <select class="form-select" id="signup-city" required>
+                            <option value="">Select city</option>
+                            <option value="Lagos">Lagos</option>
+                            <option value="Abuja">Abuja</option>
+                            <option value="Kano">Kano</option>
+                            <option value="Ibadan">Ibadan</option>
+                            <option value="Port Harcourt">Port Harcourt</option>
+                            <option value="Benin City">Benin City</option>
+                            <option value="Kaduna">Kaduna</option>
+                            <option value="Enugu">Enugu</option>
+                            <option value="Zaria">Zaria</option>
+                            <option value="Ilorin">Ilorin</option>
+                            <option value="Jos">Jos</option>
+                            <option value="Owerri">Owerri</option>
+                            <option value="Abeokuta">Abeokuta</option>
+                            <option value="Onitsha">Onitsha</option>
+                            <option value="Warri">Warri</option>
+                            <option value="Calabar">Calabar</option>
+                            <option value="Uyo">Uyo</option>
+                            <option value="Asaba">Asaba</option>
+                            <option value="Akure">Akure</option>
+                            <option value="Bauchi">Bauchi</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Date of Birth *</label>
+                    <input type="date" class="form-input" id="signup-dob" required>
+                </div>
+                <div class="form-group">
+                    <div class="checkbox-group">
+                        <input type="checkbox" class="checkbox-input" id="signup-age" required>
+                        <label class="checkbox-label" for="signup-age">
+                            I confirm that I am 18 years or older and agree to the
+                            <a href="terms.html" target="_blank">Terms of Service</a> and
+                            <a href="privacy.html" target="_blank">Privacy Policy</a>
+                        </label>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary btn-large" style="width: 100%" id="signup-btn">
+                    Create Account
+                </button>
+                <p id="signup-error" class="form-error" style="display: none;"></p>
+            </form>
+            <p class="auth-footer mt-lg">
+                Already have an account? <a href="#" onclick="switchModal('signup-modal', 'login-modal')">Login</a>
+            </p>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-links">
+            <a href="terms.html" class="footer-link">Terms of Service</a>
+            <a href="privacy.html" class="footer-link">Privacy Policy</a>
+        </div>
+        <p class="footer-copy">© 2026 My Val. All rights reserved.</p>
+    </footer>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/firebase-init.js"></script>
+    <script src="js/modal-auth.js"></script>
+</body>
+
+</html>
