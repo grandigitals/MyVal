@@ -398,6 +398,35 @@ function calculateAge(dateString) {
 }
 
 function isValidPhone(phone) {
-    const cleaned = phone.replace(/\D/g, '');
-    return cleaned.length >= 10 && cleaned.length <= 14;
+    // Clean the phone number - remove spaces, dashes, and other characters
+    let cleaned = phone.replace(/[\s\-\(\)]/g, '');
+
+    // Convert +234 to 0
+    if (cleaned.startsWith('+234')) {
+        cleaned = '0' + cleaned.slice(4);
+    } else if (cleaned.startsWith('234')) {
+        cleaned = '0' + cleaned.slice(3);
+    }
+
+    // Must be 11 digits starting with 0
+    if (cleaned.length !== 11 || !cleaned.startsWith('0')) {
+        return false;
+    }
+
+    // Valid Nigerian mobile prefixes
+    const validPrefixes = [
+        // MTN
+        '0703', '0706', '0803', '0806', '0810', '0813', '0814', '0816', '0903', '0906', '0913', '0916',
+        // Glo
+        '0705', '0805', '0807', '0811', '0815', '0905', '0915',
+        // Airtel
+        '0701', '0708', '0802', '0808', '0812', '0901', '0902', '0904', '0907', '0912',
+        // 9mobile
+        '0809', '0817', '0818', '0908', '0909',
+        // Other
+        '0702', '0704', '0709', '0819'
+    ];
+
+    const prefix = cleaned.substring(0, 4);
+    return validPrefixes.includes(prefix);
 }

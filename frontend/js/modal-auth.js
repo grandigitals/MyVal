@@ -129,7 +129,7 @@ async function handleSignup(e) {
     }
 
     if (!isValidPhone(phoneNumber)) {
-        errorEl.textContent = 'Please enter a valid phone number';
+        errorEl.textContent = 'Please enter a valid Nigerian phone number (e.g., 08012345678)';
         errorEl.style.display = 'block';
         return;
     }
