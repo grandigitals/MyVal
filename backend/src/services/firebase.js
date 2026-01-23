@@ -1,6 +1,6 @@
 // =====================================================
 // MY VAL BACKEND - Firebase Service (Admin)
-// Includes: user ops, matching audit, reveal logic, logs, TEST_MODE revealAt
+// Includes: user ops, matching audit, reveal flip, TEST_MODE revealAt
 // =====================================================
 
 const admin = require("firebase-admin");
@@ -31,7 +31,38 @@ async function verifyFirebaseToken(idToken) {
     return admin.auth().verifyIdToken(idToken);
 }
 
-// -------------------- BASIC USER OPS --------------------
+// -------------------- helpers --------------------
+
+function isTestMode() {
+    return String(process.env.TEST_MODE || "false").toLowerCase() === "true";
+}
+
+// TEST_MODE=true => now + 2 mins
+// TEST_MODE=false => PROD_REVEAL_ISO OR default Feb 10
+function computeRevealAtMs() {
+    if (isTestMode()) return Date.now() + 2 * 60 * 1000;
+
+    const iso = process.env.PROD_REVEAL_ISO;
+    if (iso) return new Date(iso).getTime();
+
+    const year = new Date().getFullYear();
+    return new Date(`${year}-02-10T00:00:00+01:00`).getTime();
+}
+
+async function audit(type, payload = {}) {
+    try {
+        const db = getAdminDb();
+        await db.collection("audit_logs").add({
+            type,
+            payload,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+    } catch (e) {
+        console.error("Audit log failed:", e);
+    }
+}
+
+// -------------------- user ops --------------------
 
 async function getUser(userId) {
     try {
@@ -47,10 +78,13 @@ async function getUser(userId) {
 async function updateUser(userId, data) {
     try {
         const db = getAdminDb();
-        await db.collection("users").doc(userId).update({
-            ...data,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
+        await db.collection("users").doc(userId).set(
+            {
+                ...data,
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            },
+            { merge: true }
+        );
         return true;
     } catch (e) {
         console.error("Error updating user:", e);
@@ -58,7 +92,6 @@ async function updateUser(userId, data) {
     }
 }
 
-// Paid + unmatched users
 async function getPaidUnmatchedUsers() {
     try {
         const db = getAdminDb();
@@ -82,53 +115,15 @@ async function getPaidUnmatchedUsers() {
     }
 }
 
-// -------------------- LOGGING / AUDIT --------------------
-
-async function audit(type, payload = {}) {
-    try {
-        const db = getAdminDb();
-        await db.collection("audit_logs").add({
-            type,
-            payload,
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-    } catch (e) {
-        console.error("Audit log failed:", e);
-    }
-}
-
-// -------------------- REVEAL TIME HELPERS --------------------
-
-function isTestMode() {
-    return String(process.env.TEST_MODE || "false").toLowerCase() === "true";
-}
-
-// If TEST_MODE=true => now + 2 mins
-// Else => Feb 10 or PROD_REVEAL_ISO
-function computeRevealAtMs() {
-    if (isTestMode()) {
-        return Date.now() + 2 * 60 * 1000;
-    }
-
-    // optional override
-    const iso = process.env.PROD_REVEAL_ISO;
-    if (iso) return new Date(iso).getTime();
-
-    // default: Feb 10 of current year @ 00:00 (GMT+1-ish)
-    const now = new Date();
-    const year = now.getFullYear();
-    return new Date(`${year}-02-10T00:00:00+01:00`).getTime();
-}
-
-// -------------------- MATCH CREATION + AUDIT --------------------
+// -------------------- matching + audit --------------------
 
 /**
  * Create match between two users + create matches audit doc
- * Also sets revealAt + matchRevealed false for BOTH users
+ * Sets revealAt + matchRevealed false for BOTH users
  *
- * NOTE: This only affects NEW matches, not existing users.
+ * opts: { revealAtMs?: number, testMode?: boolean }
  */
-async function setMatch(userId1, userId2) {
+async function setMatch(userId1, userId2, opts = {}) {
     try {
         const db = getAdminDb();
         const batch = db.batch();
@@ -136,13 +131,11 @@ async function setMatch(userId1, userId2) {
         const user1Ref = db.collection("users").doc(userId1);
         const user2Ref = db.collection("users").doc(userId2);
 
-        // Create audit record in matches/
-        const matchRef = db.collection("matches").doc();
+        const matchRef = db.collection("matches").doc(); // audit record
 
-        const revealAtMs = computeRevealAtMs();
+        const revealAtMs = Number(opts.revealAtMs) || computeRevealAtMs();
         const revealAt = admin.firestore.Timestamp.fromMillis(revealAtMs);
 
-        // Update BOTH users
         batch.update(user1Ref, {
             matchId: userId2,
             matchDocId: matchRef.id,
@@ -159,14 +152,13 @@ async function setMatch(userId1, userId2) {
             matchRevealed: false,
         });
 
-        // Save audit record
         batch.set(matchRef, {
             userA: userId1,
             userB: userId2,
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
             revealAt,
             status: "matched",
-            testMode: isTestMode(),
+            testMode: typeof opts.testMode === "boolean" ? opts.testMode : isTestMode(),
             revealedAt: null,
         });
 
@@ -194,17 +186,11 @@ async function setMatch(userId1, userId2) {
     }
 }
 
-// -------------------- REVEAL FLIP (THE IMPORTANT PART) --------------------
+// -------------------- reveal flip --------------------
 
 /**
- * When user visits /reveal page, frontend can call backend to flip if due.
- * This updates:
- *  - users/{uid}.matchRevealed = true
- *  - users/{matchId}.matchRevealed = true
- *  - matches/{matchDocId}.status = "revealed"
- *  - matches/{matchDocId}.revealedAt = now
- *
- * This protects you later if someone claims "I wasn't revealed".
+ * Called when user opens /reveal page.
+ * If reveal time has passed, flips matchRevealed=true for BOTH users and updates matches doc.
  */
 async function markMatchRevealedIfDue(userId) {
     const db = getAdminDb();
@@ -219,25 +205,20 @@ async function markMatchRevealedIfDue(userId) {
     const now = new Date();
 
     console.log(
-        `🕒 Reveal check for ${userId}: now=${now.toISOString()} revealAt=${revealAtDate.toISOString()}`
+        `🕒 [REVEAL] check uid=${userId} now=${now.toISOString()} revealAt=${revealAtDate.toISOString()}`
     );
 
-    // Not yet time
     if (now < revealAtDate) {
         return { ok: true, due: false, revealAt: revealAtDate.toISOString() };
     }
 
-    // Already revealed
     if (user.matchRevealed === true) {
         return { ok: true, due: true, already: true };
     }
 
-    const matchDocId = user.matchDocId || null;
-
+    const batch = db.batch();
     const userRef = db.collection("users").doc(userId);
     const otherRef = db.collection("users").doc(user.matchId);
-
-    const batch = db.batch();
 
     batch.update(userRef, {
         matchRevealed: true,
@@ -249,8 +230,8 @@ async function markMatchRevealedIfDue(userId) {
         revealedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
-    if (matchDocId) {
-        const matchRef = db.collection("matches").doc(matchDocId);
+    if (user.matchDocId) {
+        const matchRef = db.collection("matches").doc(user.matchDocId);
         batch.update(matchRef, {
             status: "revealed",
             revealedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -259,12 +240,12 @@ async function markMatchRevealedIfDue(userId) {
 
     await batch.commit();
 
-    console.log(`🎉 Match revealed for user=${userId} matchDocId=${matchDocId || "none"}`);
+    console.log(`🎉 [REVEAL] Match revealed for uid=${userId} matchDocId=${user.matchDocId || "none"}`);
 
     await audit("MATCH_REVEALED", {
         userId,
         otherUserId: user.matchId,
-        matchDocId,
+        matchDocId: user.matchDocId || null,
     });
 
     return { ok: true, due: true, changed: true };

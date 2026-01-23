@@ -127,4 +127,23 @@ function showMatch(match) {
             ← Back to Dashboard
         </a>
     `;
+    //New code pasted
+    const API_BASE = "https://myval-api.onrender.com";
+
+    async function triggerRevealCheck() {
+        const user = firebase.auth().currentUser;
+        if (!user) return;
+
+        const token = await user.getIdToken(true);
+
+        await fetch(`${API_BASE}/match/reveal`, {
+            method: "GET",
+            headers: { Authorization: `Bearer ${token}` },
+        });
+    }
+
+    firebase.auth().onAuthStateChanged((user) => {
+        if (user) triggerRevealCheck();
+    });
+
 }
