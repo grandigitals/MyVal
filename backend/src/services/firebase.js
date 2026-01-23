@@ -32,13 +32,11 @@ async function verifyFirebaseToken(idToken) {
 async function getUser(userId) {
     try {
         const db = getAdminDb();
-        const doc = await db.collection('users').doc(userId).get();
-        if (doc.exists) {
-            return { id: doc.id, ...doc.data() };
-        }
+        const doc = await db.collection("users").doc(userId).get();
+        if (doc.exists) return { id: doc.id, ...doc.data() };
         return null;
     } catch (error) {
-        console.error('Error getting user:', error);
+        console.error("Error getting user:", error);
         return null;
     }
 }
@@ -47,13 +45,16 @@ async function getUser(userId) {
 async function updateUser(userId, data) {
     try {
         const db = getAdminDb();
-        await db.collection('users').doc(userId).update({
-            ...data,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp()
-        });
+        await db.collection("users").doc(userId).set(
+            {
+                ...data,
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            },
+            { merge: true }
+        );
         return true;
     } catch (error) {
-        console.error('Error updating user:', error);
+        console.error("Error updating user:", error);
         return false;
     }
 }
@@ -63,55 +64,82 @@ async function getPaidUnmatchedUsers() {
     try {
         const db = getAdminDb();
 
-        // Get all users who have paid
-        const snapshot = await db.collection('users')
-            .where('paymentStatus', '==', 'paid')
-            .get();
+        // 1) paymentStatus == "paid"
+        const snapPaid = await db.collection("users").where("paymentStatus", "==", "paid").get();
 
-        // Filter out users who already have matches
-        const users = [];
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            // Include users who have no matchId or matchId is null
+        // 2) is_premium == true (fallback, if some users were marked premium without paymentStatus)
+        const snapPremium = await db.collection("users").where("is_premium", "==", true).get();
+
+        const map = new Map();
+
+        const addIfUnmatched = (doc) => {
+            const data = doc.data() || {};
+            // Only users without matchId (null OR missing)
             if (!data.matchId) {
-                users.push({ id: doc.id, ...data });
+                map.set(doc.id, { id: doc.id, ...data });
             }
-        });
+        };
 
-        console.log(`📋 Found ${users.length} paid unmatched users`);
+        snapPaid.forEach(addIfUnmatched);
+        snapPremium.forEach(addIfUnmatched);
+
+        const users = Array.from(map.values());
+        console.log(`📋 Found ${users.length} paid/premium unmatched users`);
         return users;
-
     } catch (error) {
-        console.error('Error getting unmatched users:', error);
+        console.error("Error getting unmatched users:", error);
         return [];
     }
 }
 
-// Set match between two users
-async function setMatch(userId1, userId2) {
+// Set match between two users (NOW STORES revealAt + matchRevealed)
+async function setMatch(userId1, userId2, meta = {}) {
     try {
         const db = getAdminDb();
         const batch = db.batch();
 
-        const user1Ref = db.collection('users').doc(userId1);
-        const user2Ref = db.collection('users').doc(userId2);
+        const user1Ref = db.collection("users").doc(userId1);
+        const user2Ref = db.collection("users").doc(userId2);
 
-        batch.update(user1Ref, {
-            matchId: userId2,
-            matchedAt: admin.firestore.FieldValue.serverTimestamp()
-        });
+        const revealAt =
+            typeof meta.revealAt === "number"
+                ? admin.firestore.Timestamp.fromMillis(meta.revealAt)
+                : null;
 
-        batch.update(user2Ref, {
-            matchId: userId1,
-            matchedAt: admin.firestore.FieldValue.serverTimestamp()
-        });
+        const base = {
+            matchRevealed: false,
+            matchedAt: admin.firestore.FieldValue.serverTimestamp(),
+        };
+
+        const extra = {};
+        if (revealAt) extra.revealAt = revealAt;
+        if (typeof meta.testMode === "boolean") extra.testMode = meta.testMode;
+
+        batch.set(
+            user1Ref,
+            {
+                matchId: userId2,
+                ...base,
+                ...extra,
+            },
+            { merge: true }
+        );
+
+        batch.set(
+            user2Ref,
+            {
+                matchId: userId1,
+                ...base,
+                ...extra,
+            },
+            { merge: true }
+        );
 
         await batch.commit();
-        console.log(`✅ Match set: ${userId1} <-> ${userId2}`);
+        console.log(`✅ Match set: ${userId1} <-> ${userId2} | revealAt=${meta.revealAt || "none"} testMode=${meta.testMode}`);
         return true;
-
     } catch (error) {
-        console.error('Error setting match:', error);
+        console.error("Error setting match:", error);
         return false;
     }
 }
