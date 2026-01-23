@@ -1,6 +1,7 @@
 const express = require("express");
 const fetch = require("node-fetch");
 const { getAdminDb, verifyFirebaseToken } = require("../services/firebase");
+const matchingService = require("../services/matching");
 
 const router = express.Router();
 
@@ -54,7 +55,7 @@ router.get("/verify", async (req, res) => {
             return res.status(400).json({ success: false, error: "Invalid payment amount/currency" });
         }
 
-        // 3) Update Firestore
+        // 3) Update Firestore - mark user as paid
         const db = getAdminDb();
 
         await db.collection("users").doc(uid).set(
@@ -72,10 +73,39 @@ router.get("/verify", async (req, res) => {
             { merge: true }
         );
 
-        return res.json({ success: true, reference, uid });
+        console.log(`✅ User ${uid} marked as paid`);
+
+        // 4) *** RUN MATCHING *** - This was missing!
+        let matchResult = { matched: false };
+        try {
+            matchResult = await matchingService.runMatchingForUser(uid);
+            console.log(`💕 Matching result for ${uid}:`, matchResult);
+        } catch (matchError) {
+            console.error("Matching error (non-fatal):", matchError);
+        }
+
+        return res.json({
+            success: true,
+            reference,
+            uid,
+            matchFound: matchResult.matched,
+            matchId: matchResult.matchId || null
+        });
+
     } catch (err) {
         console.error("Verify error:", err);
         return res.status(500).json({ success: false, error: "Internal server error", message: err.message });
+    }
+});
+
+// POST /pay/run-matching - Manual trigger for matching (admin use)
+router.post("/run-matching", async (req, res) => {
+    try {
+        const result = await matchingService.runGlobalMatching();
+        return res.json({ success: true, ...result });
+    } catch (err) {
+        console.error("Global matching error:", err);
+        return res.status(500).json({ success: false, error: err.message });
     }
 });
 
