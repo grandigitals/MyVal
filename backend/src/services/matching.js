@@ -1,10 +1,21 @@
 // =====================================================
-// MY VAL BACKEND - Matching Service (AUTO + TEST_MODE)
+// MY VAL BACKEND - Matching Service (Prod Feb 10 + optional TEST_MODE)
 // =====================================================
 
 const firebaseService = require("./firebase");
 
 const AGE_RANGE = 5;
+
+// TEST_MODE only affects NEW matches
+const TEST_MODE = String(process.env.TEST_MODE || "false").toLowerCase() === "true";
+
+// Feb 10 reveal time (GMT+1)
+const PROD_REVEAL_ISO = process.env.PROD_REVEAL_ISO || "2026-02-10T00:00:00+01:00";
+
+function getRevealAtMsForNewMatch() {
+    if (TEST_MODE) return Date.now() + 2 * 60 * 1000; // 2 mins (testing)
+    return new Date(PROD_REVEAL_ISO).getTime(); // production
+}
 
 function norm(str) {
     return (str || "").toString().trim().toLowerCase();
@@ -12,53 +23,41 @@ function norm(str) {
 
 async function runMatchingForUser(userId) {
     try {
-        console.log(`\n🔍 [MATCH] Start matchmaking userId=${userId}`);
+        console.log(`\n🔍 [MATCH] Run matchmaking for userId=${userId}`);
 
         const user = await firebaseService.getUser(userId);
         if (!user) return { matched: false, error: "User not found" };
 
         if (user.matchId) {
-            console.log(`ℹ️ [MATCH] Already matched matchId=${user.matchId}`);
-            return { matched: true, matchId: user.matchId, message: "Already matched" };
+            console.log(`ℹ️ [MATCH] Already matched. matchId=${user.matchId}`);
+            return { matched: true, matchId: user.matchId };
         }
 
         const isPaid = user.paymentStatus === "paid" || user.is_premium === true;
         if (!isPaid) return { matched: false, error: "User has not paid" };
 
         const candidates = await firebaseService.getPaidUnmatchedUsers();
-        console.log(`📋 [MATCH] Candidates=${candidates.length}`);
-
-        const userCity = norm(user.city);
-        console.log(`🏙️ [MATCH] userCity="${userCity}"`);
+        console.log(`📋 [MATCH] candidates=${candidates.length}`);
 
         const match = findBestMatch(userId, user, candidates);
         if (!match) {
-            console.log(`⏳ [MATCH] No compatible match found yet for ${userId}`);
+            console.log(`⏳ [MATCH] No compatible match yet for userId=${userId}`);
             return { matched: false, message: "No compatible match found yet" };
         }
 
-        const revealAtMs = firebaseService.computeRevealAtMs();
+        const revealAt = getRevealAtMsForNewMatch();
 
-        const saved = await firebaseService.setMatch(userId, match.user.id, {
-            revealAtMs,
-            testMode: firebaseService.isTestMode(),
+        const ok = await firebaseService.setMatch(userId, match.user.id, {
+            revealAt,
+            testMode: TEST_MODE,
         });
 
-        if (!saved.ok) {
-            console.log(`❌ [MATCH] setMatch failed: ${saved.error}`);
-            return { matched: false, error: "Failed to save match" };
-        }
+        if (!ok) return { matched: false, error: "Failed to save match" };
 
         console.log(`💕 [MATCH] Matched OK: ${userId} <-> ${match.user.id}`);
-        console.log(`⏰ [MATCH] revealAt=${new Date(saved.revealAtMs).toISOString()} TEST_MODE=${firebaseService.isTestMode()}`);
+        console.log(`⏰ [MATCH] revealAt=${new Date(revealAt).toISOString()} testMode=${TEST_MODE}`);
 
-        return {
-            matched: true,
-            matchId: match.user.id,
-            matchDocId: saved.matchDocId,
-            score: match.score,
-            revealAtMs: saved.revealAtMs,
-        };
+        return { matched: true, matchId: match.user.id, score: match.score, revealAt };
     } catch (e) {
         console.error("🔥 [MATCH] Error:", e);
         return { matched: false, error: e.message };
@@ -75,10 +74,7 @@ function findBestMatch(userId, user, candidates) {
         .filter((x) => x.score > 0)
         .sort((a, b) => b.score - a.score);
 
-    if (!scored.length) return null;
-
-    console.log(`✅ [MATCH] Top score=${scored[0].score} candidateId=${scored[0].user.id}`);
-    return scored[0];
+    return scored.length ? scored[0] : null;
 }
 
 function calculateCompatibilityScore(user1, user2) {
@@ -90,7 +86,7 @@ function calculateCompatibilityScore(user1, user2) {
     if (!city1 || !city2 || city1 !== city2) return 0;
     score += 40;
 
-    // Gender prefs
+    // Gender preference
     const gender1 = norm(user1.gender);
     const gender2 = norm(user2.gender);
     const pref1 = norm(user1.genderPreference || "any");
@@ -101,7 +97,7 @@ function calculateCompatibilityScore(user1, user2) {
     if (!ok1 || !ok2) return 0;
     score += 40;
 
-    // Age bonus (optional)
+    // Age
     const age1 = calculateAge(user1.dateOfBirth);
     const age2 = calculateAge(user2.dateOfBirth);
     if (age1 && age2) {
@@ -115,7 +111,6 @@ function calculateCompatibilityScore(user1, user2) {
 
 function calculateAge(dateOfBirth) {
     if (!dateOfBirth) return null;
-
     const birth = new Date(dateOfBirth);
     if (isNaN(birth.getTime())) return null;
 
@@ -126,28 +121,4 @@ function calculateAge(dateOfBirth) {
     return age;
 }
 
-async function runGlobalMatching() {
-    try {
-        console.log("\n🌍 [MATCH] Running global matchmaking...");
-        const users = await firebaseService.getPaidUnmatchedUsers();
-        let matchesMade = 0;
-
-        for (const u of users) {
-            if (!u.id || u.matchId) continue;
-            const r = await runMatchingForUser(u.id);
-            if (r.matched) matchesMade++;
-        }
-
-        console.log(`✅ [MATCH] Global matching complete matchesMade=${matchesMade}`);
-        return { matchesMade };
-    } catch (e) {
-        console.error("🔥 [MATCH] Global matching error:", e);
-        return { error: e.message };
-    }
-}
-
-module.exports = {
-    runMatchingForUser,
-    runGlobalMatching,
-    calculateCompatibilityScore,
-};
+module.exports = { runMatchingForUser, calculateCompatibilityScore };
