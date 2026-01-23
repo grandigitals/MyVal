@@ -1,11 +1,45 @@
-const API_BASE = "https://myval-api.onrender.com";
-const AMOUNT_KOBO = 200000;
+// =====================================================
+// MY VAL - Payment Page Logic (Paystack → Backend Verify → Dashboard)
+// =====================================================
 
+const API_BASE = "https://myval-api.onrender.com";
+const AMOUNT_KOBO = 200000; // ₦2,000
+
+// ===============================
+// Verify payment with retry
+// ===============================
+async function verifyWithRetry(ref, attempts = 5, delayMs = 2000) {
+    const token = await firebase.auth().currentUser.getIdToken(true);
+
+    for (let i = 1; i <= attempts; i++) {
+        const res = await fetch(`${API_BASE}/pay/verify?reference=${encodeURIComponent(ref)}`, {
+            method: "GET",
+            headers: { Authorization: `Bearer ${token}` }
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (res.ok && data.success) return data;
+
+        if (i < attempts) {
+            console.log(`Verification retry ${i}/${attempts}`);
+            await new Promise(r => setTimeout(r, delayMs));
+        }
+    }
+
+    throw new Error("Verification delayed. Please wait and try again.");
+}
+
+// ===============================
+// Page load
+// ===============================
 document.addEventListener("DOMContentLoaded", () => {
     const payBtn = document.getElementById("pay-btn");
     if (!payBtn) return;
 
-    const defaultBtnText = payBtn.textContent;
+    const defaultBtnText = payBtn.textContent || "Pay ₦2,000 to Get Matched 💗";
+    payBtn.disabled = true;
+    payBtn.textContent = "Loading...";
 
     firebase.auth().onAuthStateChanged(async (user) => {
         if (!user) {
@@ -17,25 +51,39 @@ document.addEventListener("DOMContentLoaded", () => {
             const userRef = db.collection("users").doc(user.uid);
             const snap = await userRef.get();
 
-            if (snap.exists && (snap.data().is_premium === true || snap.data().paymentStatus === "paid")) {
-                window.location.href = "dashboard.html";
-                return;
+            if (snap.exists) {
+                const data = snap.data() || {};
+                if (data.is_premium === true && data.paymentStatus === "paid") {
+                    window.location.href = "dashboard.html";
+                    return;
+                }
             }
 
             payBtn.disabled = false;
             payBtn.textContent = defaultBtnText;
+            payBtn.onclick = () => startPayment(user, payBtn, defaultBtnText);
 
-            payBtn.addEventListener("click", () => startPayment(user, payBtn, defaultBtnText));
-        } catch (e) {
-            console.error(e);
-            alert("Could not load your account. Please refresh.");
+        } catch (err) {
+            console.error("User load error:", err);
+            payBtn.disabled = false;
+            payBtn.textContent = defaultBtnText;
+            payBtn.onclick = () => startPayment(user, payBtn, defaultBtnText);
         }
     });
 });
 
+// ===============================
+// Start payment
+// ===============================
 function startPayment(user, payBtn, defaultBtnText) {
     if (typeof PaystackPop === "undefined") {
-        alert("Paystack not loaded. Please refresh.");
+        alert("Paystack failed to load. Please refresh the page.");
+        return;
+    }
+
+    if (!user?.email) {
+        alert("Login expired. Please login again.");
+        window.location.href = "index.html";
         return;
     }
 
@@ -44,45 +92,59 @@ function startPayment(user, payBtn, defaultBtnText) {
 
     const reference = `MYVAL_${Date.now()}`;
 
-    const handler = PaystackPop.setup({
-        key: CONFIG.PAYSTACK_PUBLIC_KEY,
-        email: user.email,
-        amount: AMOUNT_KOBO,
-        currency: "NGN",
-        ref: reference,
+    try {
+        const handler = PaystackPop.setup({
+            key: CONFIG.PAYSTACK_PUBLIC_KEY,
+            email: user.email,
+            amount: AMOUNT_KOBO,
+            currency: "NGN",
+            ref: reference,
 
-        callback: async (response) => {
-            const ref = response?.reference || reference;
-            payBtn.textContent = "Verifying payment…";
+            // ⚠️ MUST be normal function
+            callback: function (response) {
+                const ref = response?.reference || reference;
+                payBtn.textContent = "Verifying payment…";
 
-            try {
-                const token = await firebase.auth().currentUser.getIdToken(true);
-                const res = await fetch(`${API_BASE}/pay/verify?reference=${encodeURIComponent(ref)}`, {
-                    method: "GET",
-                    headers: { Authorization: `Bearer ${token}` }
-                });
+                (async () => {
+                    try {
+                        await verifyWithRetry(ref);
 
-                const data = await res.json().catch(() => ({}));
+                        alert("Payment verified ✅");
+                        window.location.href = "dashboard.html";
+                    } catch (err) {
+                        console.error(err);
+                        alert(
+                            "Payment received but verification is still processing.\n\n" +
+                            "Reference: " + ref + "\n\n" +
+                            "Please wait 10 seconds and refresh your dashboard."
+                        );
+                        payBtn.disabled = false;
+                        payBtn.textContent = defaultBtnText;
+                    }
+                })();
+            },
 
-                if (!res.ok || !data.success) {
-                    throw new Error(data.error || data.message || "Verification failed");
-                }
-
-                alert("Payment verified ✅");
-                window.location.href = "dashboard.html";
-            } catch (err) {
-                console.error(err);
-                alert("Payment received but verification failed.\nRef: " + ref);
+            onClose: function () {
                 payBtn.disabled = false;
                 payBtn.textContent = defaultBtnText;
             }
-        },
+        });
 
-        onClose: () => {
-            payBtn.disabled = false;
-            payBtn.textContent = defaultBtnText;
-        }
-    });
+        handler.openIframe();
 
-    handler.openIframe();
+        // Safety reset if popup blocked
+        setTimeout(() => {
+            if (payBtn.textContent.includes("Opening secure payment")) {
+                payBtn.disabled = false;
+                payBtn.textContent = defaultBtnText;
+                alert("Paystack popup didn’t open. Please disable popup blockers or try another browser.");
+            }
+        }, 7000);
+
+    } catch (err) {
+        console.error("Paystack error:", err);
+        alert("Could not open Paystack. Please refresh and try again.");
+        payBtn.disabled = false;
+        payBtn.textContent = defaultBtnText;
+    }
 }
