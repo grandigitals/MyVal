@@ -109,15 +109,33 @@ function startPayment(user, payBtn, defaultBtnText) {
                     try {
                         await verifyWithRetry(ref);
 
-                        alert("Payment verified ✅");
-                        window.location.href = "dashboard.html";
+                        // Show success message on page
+                        payBtn.style.display = "none";
+                        const statusDiv = document.getElementById("payment-status");
+                        if (statusDiv) {
+                            statusDiv.style.display = "block";
+                            document.getElementById("status-icon").textContent = "✅";
+                            document.getElementById("status-text").textContent = "Payment Verified!";
+                            document.getElementById("status-subtext").textContent = "Redirecting to dashboard...";
+                        }
+
+                        // Redirect after showing message
+                        setTimeout(() => {
+                            window.location.href = "dashboard.html";
+                        }, 2000);
                     } catch (err) {
                         console.error(err);
-                        alert(
-                            "Payment received but verification is still processing.\n\n" +
-                            "Reference: " + ref + "\n\n" +
-                            "Please wait 10 seconds and refresh your dashboard."
-                        );
+
+                        // Show error on page
+                        const statusDiv = document.getElementById("payment-status");
+                        if (statusDiv) {
+                            statusDiv.style.display = "block";
+                            document.getElementById("status-icon").textContent = "⏳";
+                            document.getElementById("status-text").textContent = "Verification Processing...";
+                            document.getElementById("status-text").className = "text-warning";
+                            document.getElementById("status-subtext").textContent = "Ref: " + ref + " - Please wait and check your dashboard.";
+                        }
+
                         payBtn.disabled = false;
                         payBtn.textContent = defaultBtnText;
                     }
@@ -131,16 +149,16 @@ function startPayment(user, payBtn, defaultBtnText) {
         });
 
         handler.openIframe();
-
-        // Safety reset if popup blocked
-        setTimeout(() => {
-            if (payBtn.textContent.includes("Opening secure payment")) {
-                payBtn.disabled = false;
-                payBtn.textContent = defaultBtnText;
-                alert("Paystack popup didn’t open. Please disable popup blockers or try another browser.");
-            }
-        }, 7000);
-
+        /*
+                // Safety reset if popup blocked
+                setTimeout(() => {
+                    if (payBtn.textContent.includes("Opening secure payment")) {
+                        payBtn.disabled = false;
+                        payBtn.textContent = defaultBtnText;
+                        alert("Paystack popup didn’t open. Please disable popup blockers or try another browser.");
+                    }
+                }, 7000);
+        */
     } catch (err) {
         console.error("Paystack error:", err);
         alert("Could not open Paystack. Please refresh and try again.");

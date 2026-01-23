@@ -524,6 +524,10 @@ a:hover {
     text-align: center;
 }
 
+.text-right {
+    text-align: right;
+}
+
 .text-muted {
     color: var(--cloud-white-muted);
 }

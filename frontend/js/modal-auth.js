@@ -62,6 +62,12 @@ document.addEventListener('DOMContentLoaded', function () {
     if (signupForm) {
         signupForm.addEventListener('submit', handleSignup);
     }
+
+    // Forgot password handler
+    const forgotLink = document.getElementById('forgot-password-link');
+    if (forgotLink) {
+        forgotLink.addEventListener('click', handleForgotPassword);
+    }
 });
 
 // Handle Login
@@ -93,6 +99,46 @@ async function handleLogin(e) {
         errorEl.style.display = 'block';
         btn.disabled = false;
         btn.textContent = 'Login';
+    }
+}
+
+// Handle Forgot Password
+async function handleForgotPassword(e) {
+    e.preventDefault();
+
+    const email = document.getElementById('login-email').value.trim();
+    const errorEl = document.getElementById('login-error');
+    const successEl = document.getElementById('login-success');
+
+    // Hide previous messages
+    if (errorEl) errorEl.style.display = 'none';
+    if (successEl) successEl.style.display = 'none';
+
+    if (!email) {
+        if (errorEl) {
+            errorEl.textContent = 'Please enter your email address first';
+            errorEl.style.display = 'block';
+        }
+        return;
+    }
+
+    try {
+        await firebase.auth().sendPasswordResetEmail(email);
+
+        if (successEl) {
+            successEl.textContent = '✅ Password reset email sent! Check your inbox.';
+            successEl.style.display = 'block';
+        }
+    } catch (error) {
+        console.error('Password reset error:', error);
+        if (errorEl) {
+            if (error.code === 'auth/user-not-found') {
+                errorEl.textContent = 'No account found with this email';
+            } else {
+                errorEl.textContent = 'Could not send reset email. Please try again.';
+            }
+            errorEl.style.display = 'block';
+        }
     }
 }
 

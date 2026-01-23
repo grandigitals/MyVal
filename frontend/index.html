@@ -64,10 +64,14 @@
                     <input type="password" class="form-input" id="login-password" placeholder="Enter your password"
                         required>
                 </div>
+                <p class="text-right mb-md">
+                    <a href="#" id="forgot-password-link" class="text-sm">Forgot Password?</a>
+                </p>
                 <button type="submit" class="btn btn-primary btn-large" style="width: 100%" id="login-btn">
                     Login
                 </button>
                 <p id="login-error" class="form-error" style="display: none;"></p>
+                <p id="login-success" class="text-success text-sm mt-md" style="display: none;"></p>
             </form>
             <p class="auth-footer mt-lg">
                 Don't have an account? <a href="#" onclick="switchModal('login-modal', 'signup-modal')">Sign up</a>
