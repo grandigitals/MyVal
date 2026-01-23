@@ -38,6 +38,12 @@ document.addEventListener('DOMContentLoaded', async function () {
         // Show match!
         showMatch(matchData);
 
+        // Mark as revealed (so we know user has seen their match)
+        if (!userData.matchRevealed) {
+            await Database.updateUser(authUser.uid, { matchRevealed: true });
+            console.log('✅ Match marked as revealed');
+        }
+
     } catch (error) {
         console.error('Auth required');
     }
