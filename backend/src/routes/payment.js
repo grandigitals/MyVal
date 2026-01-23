@@ -1,194 +1,81 @@
-// =====================================================
-// MY VAL BACKEND - Payment Routes
-// =====================================================
+const express = require("express");
+const fetch = require("node-fetch");
+const { getAdminDb, verifyFirebaseToken } = require("../services/firebase");
 
-const express = require('express');
 const router = express.Router();
-const paystackService = require('../services/paystack');
-const firebaseService = require('../services/firebase');
-const matchingService = require('../services/matching');
 
-/**
- * POST /pay/initiate
- * Initialize a Paystack payment
- * Body: { email, userId, amount? }
- */
-router.post('/initiate', async (req, res) => {
+// GET /pay/verify?reference=...
+router.get("/verify", async (req, res) => {
     try {
-        const { email, userId, amount } = req.body;
-
-        if (!email || !userId) {
-            return res.status(400).json({
-                success: false,
-                error: 'Missing required fields: email, userId'
-            });
-        }
-
-        // Check if user exists and hasn't paid
-        const user = await firebaseService.getUser(userId);
-        if (!user) {
-            return res.status(404).json({
-                success: false,
-                error: 'User not found'
-            });
-        }
-
-        if (user.paymentStatus === 'paid' || user.is_premium) {
-            return res.status(400).json({
-                success: false,
-                error: 'User has already paid'
-            });
-        }
-
-        // Initialize payment with Paystack
-        const paymentAmount = amount || parseInt(process.env.PAYMENT_AMOUNT) || 200000;
-        const result = await paystackService.initializePayment({
-            email,
-            amount: paymentAmount,
-            userId,
-            metadata: {
-                userId,
-                fullName: user.fullName || user.displayName || 'User'
-            }
-        });
-
-        if (!result.success) {
-            return res.status(500).json({
-                success: false,
-                error: result.error || 'Failed to initialize payment'
-            });
-        }
-
-        // Store pending payment reference
-        await firebaseService.updateUser(userId, {
-            pendingPaymentRef: result.reference,
-            pendingPaymentAt: new Date().toISOString()
-        });
-
-        res.json({
-            success: true,
-            authorization_url: result.authorization_url,
-            reference: result.reference,
-            access_code: result.access_code
-        });
-
-    } catch (error) {
-        console.error('Payment initiation error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Failed to initiate payment',
-            message: error.message
-        });
-    }
-});
-
-/**
- * GET /pay/verify
- * Verify a Paystack payment
- * Query: ?reference=xxx&userId=xxx
- */
-router.get('/verify', async (req, res) => {
-    try {
-        const { reference, userId } = req.query;
-
+        const reference = req.query.reference;
         if (!reference) {
-            return res.status(400).json({
-                success: false,
-                error: 'Missing payment reference'
-            });
+            return res.status(400).json({ success: false, error: "Missing reference" });
         }
 
-        // Verify payment with Paystack
-        const verification = await paystackService.verifyPayment(reference);
-
-        if (!verification.success) {
-            return res.status(400).json({
-                success: false,
-                error: verification.error || 'Payment verification failed'
-            });
+        // 1) Verify Firebase user (so we know which uid to update)
+        const authHeader = req.headers.authorization || "";
+        const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
+        if (!token) {
+            return res.status(401).json({ success: false, error: "Missing Authorization Bearer token" });
         }
 
-        // Payment successful - update user
-        const uid = userId || verification.metadata?.userId;
+        const decoded = await verifyFirebaseToken(token);
+        const uid = decoded.uid;
 
-        if (!uid) {
-            return res.status(400).json({
-                success: false,
-                error: 'Could not identify user from payment'
-            });
+        // 2) Verify with Paystack (server-side)
+        const secret = process.env.PAYSTACK_SECRET_KEY;
+        if (!secret) {
+            return res.status(500).json({ success: false, error: "PAYSTACK_SECRET_KEY not set" });
         }
 
-        // Mark user as paid
-        await firebaseService.updateUser(uid, {
-            paymentStatus: 'paid',
-            is_premium: true,
-            paystackReference: reference,
-            paidAt: new Date().toISOString(),
-            paidAmount: verification.amount
-        });
-
-        console.log(`✅ User ${uid} marked as paid`);
-
-        // Run matchmaking
-        const matchResult = await matchingService.runMatchingForUser(uid);
-        console.log(`💕 Matching result for ${uid}:`, matchResult);
-
-        res.json({
-            success: true,
-            message: 'Payment verified successfully',
-            data: {
-                reference,
-                userId: uid,
-                amount: verification.amount,
-                paidAt: verification.paid_at,
-                matchFound: matchResult.matched
+        const r = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, {
+            headers: {
+                Authorization: `Bearer ${secret}`
             }
         });
 
-    } catch (error) {
-        console.error('Payment verification error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Failed to verify payment',
-            message: error.message
-        });
-    }
-});
+        const result = await r.json();
 
-/**
- * POST /pay/webhook
- * Paystack webhook for payment events
- */
-router.post('/webhook', async (req, res) => {
-    try {
-        const event = req.body;
-        console.log('Paystack webhook event:', event.event);
-
-        if (event.event === 'charge.success') {
-            const { reference, metadata, amount } = event.data;
-            const userId = metadata?.userId;
-
-            if (userId) {
-                // Mark user as paid
-                await firebaseService.updateUser(userId, {
-                    paymentStatus: 'paid',
-                    is_premium: true,
-                    paystackReference: reference,
-                    paidAt: new Date().toISOString(),
-                    paidAmount: amount
-                });
-
-                // Run matchmaking
-                await matchingService.runMatchingForUser(userId);
-                console.log(`✅ Webhook: User ${userId} marked as paid`);
-            }
+        if (!result.status) {
+            return res.status(400).json({ success: false, error: result.message || "Paystack verification failed" });
         }
 
-        res.status(200).send('OK');
+        const data = result.data;
 
-    } catch (error) {
-        console.error('Webhook error:', error);
-        res.status(500).send('Error');
+        // Must be success
+        if (data.status !== "success") {
+            return res.status(400).json({ success: false, error: "Payment not successful", paystackStatus: data.status });
+        }
+
+        // Optional safety: enforce amount/currency
+        // Paystack amount is in kobo
+        const expectedAmount = 200000;
+        if (data.amount !== expectedAmount || data.currency !== "NGN") {
+            return res.status(400).json({ success: false, error: "Invalid payment amount/currency" });
+        }
+
+        // 3) Update Firestore
+        const db = getAdminDb();
+
+        await db.collection("users").doc(uid).set(
+            {
+                is_premium: true,
+                paymentStatus: "paid",
+                paymentRef: reference,
+                paidAt: new Date().toISOString(),
+                paystack: {
+                    channel: data.channel || null,
+                    gateway_response: data.gateway_response || null,
+                    customer_email: data.customer?.email || null
+                }
+            },
+            { merge: true }
+        );
+
+        return res.json({ success: true, reference, uid });
+    } catch (err) {
+        console.error("Verify error:", err);
+        return res.status(500).json({ success: false, error: "Internal server error", message: err.message });
     }
 });
 
