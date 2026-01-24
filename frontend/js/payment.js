@@ -61,8 +61,9 @@ const Payment = {
             });
         }
 
-        // Trigger matching process
-        Matching.runMatchingForUser(userId);
+        // NOTE: Matching is now handled by backend after payment verification
+        // No client-side matching call needed
+        console.log('✅ Payment recorded. Backend will handle matching.');
     },
 
     // Generate unique payment reference

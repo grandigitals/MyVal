@@ -171,6 +171,72 @@ async function markUserRevealed(userId) {
     }
 }
 
+/**
+ * Get match details for a user (for /match/status endpoint)
+ * Returns match data + reveal timing
+ */
+async function getMatchWithDetails(userId) {
+    try {
+        const db = getAdminDb();
+        const userDoc = await db.collection("users").doc(userId).get();
+
+        if (!userDoc.exists) {
+            return { found: false, error: "User not found" };
+        }
+
+        const userData = userDoc.data();
+        const matchId = userData.matchId || null;
+
+        // Base status
+        const status = {
+            userId,
+            matchId,
+            hasMatch: !!matchId,
+            paymentStatus: userData.paymentStatus || "unpaid",
+            isPaid: userData.paymentStatus === "paid" || userData.is_premium === true,
+            matchRevealed: userData.matchRevealed || false,
+            revealAt: null,
+            revealAtMs: null,
+            isRevealTime: false,
+            testMode: userData.testMode || false,
+            matchTier: userData.matchTier || null,
+            matchData: null
+        };
+
+        // Parse reveal time
+        if (userData.revealAt) {
+            if (userData.revealAt.toDate) {
+                // Firestore Timestamp
+                status.revealAt = userData.revealAt.toDate().toISOString();
+                status.revealAtMs = userData.revealAt.toMillis();
+            } else if (typeof userData.revealAt === "string") {
+                status.revealAt = userData.revealAt;
+                status.revealAtMs = new Date(userData.revealAt).getTime();
+            }
+            status.isRevealTime = Date.now() >= status.revealAtMs;
+        }
+
+        // Get match user data if revealed or reveal time reached
+        if (matchId && status.isRevealTime) {
+            const matchDoc = await db.collection("users").doc(matchId).get();
+            if (matchDoc.exists) {
+                const m = matchDoc.data();
+                status.matchData = {
+                    fullName: m.fullName || m.name || "Your Match",
+                    city: m.city || "",
+                    phoneNumber: m.phoneNumber || m.phone || "",
+                    gender: m.gender || ""
+                };
+            }
+        }
+
+        return { found: true, ...status };
+    } catch (e) {
+        console.error("Error getting match details:", e);
+        return { found: false, error: e.message };
+    }
+}
+
 module.exports = {
     initializeFirebase,
     getAdminDb,
@@ -180,4 +246,5 @@ module.exports = {
     getPaidUnmatchedUsers,
     setMatch,
     markUserRevealed,
+    getMatchWithDetails,
 };

@@ -1,38 +1,28 @@
 // =====================================================
 // MY VAL - Waiting Page Logic
-// Shows countdown to February 10th reveal date
+// Uses server-provided reveal time from /match/status
 // =====================================================
+
+const API_BASE = "https://myval-api.onrender.com";
 
 document.addEventListener('DOMContentLoaded', async function () {
     // Require authentication
     try {
         const authUser = await Auth.requireAuth();
-        const userData = await Database.getUser(authUser.uid);
 
-        // If not paid, redirect to payment
-        if (!userData || userData.paymentStatus !== 'paid') {
-            window.location.href = 'payment.html';
-            return;
+        // Show loading state
+        updateMessage("Loading your match status...");
+
+        // Fetch match status from backend
+        const status = await fetchMatchStatus(authUser);
+
+        if (status) {
+            handleMatchStatus(status);
+        } else {
+            // Fallback to local config if API fails
+            console.warn("Failed to fetch status, using local config");
+            startCountdownWithDate(CONFIG.REVEAL_DATE);
         }
-
-        // Check if reveal date has passed AND user has a match
-        if (Database.isRevealDate() && userData.matchId) {
-            window.location.href = 'reveal.html';
-            return;
-        }
-
-        // Update message based on match status
-        const msgEl = document.getElementById('match-message');
-        if (msgEl) {
-            if (userData.matchId) {
-                msgEl.innerHTML = 'Your match has been found! 🎉<br>Hold tight until the big reveal.';
-            } else {
-                msgEl.innerHTML = 'Thank you for your patience.<br>Your match will be revealed soon!';
-            }
-        }
-
-        // Start countdown to Feb 10
-        startCountdown();
 
     } catch (error) {
         console.error('Auth required:', error);
@@ -47,9 +37,90 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
 });
 
-function startCountdown() {
-    const revealDate = CONFIG.REVEAL_DATE;
+// Fetch match status from backend API
+async function fetchMatchStatus(authUser) {
+    try {
+        const token = await authUser.getIdToken(true);
 
+        const response = await fetch(`${API_BASE}/match/status`, {
+            method: "GET",
+            headers: {
+                "Authorization": `Bearer ${token}`,
+                "Content-Type": "application/json"
+            }
+        });
+
+        if (!response.ok) {
+            console.error("Status API error:", response.status);
+            return null;
+        }
+
+        const data = await response.json();
+
+        if (data.success) {
+            return data;
+        }
+
+        return null;
+    } catch (e) {
+        console.error("Failed to fetch match status:", e);
+        return null;
+    }
+}
+
+// Handle the match status response
+function handleMatchStatus(status) {
+    const msgEl = document.getElementById('match-message');
+
+    // Not paid? Redirect to payment
+    if (!status.isPaid) {
+        window.location.href = 'payment.html';
+        return;
+    }
+
+    // Already reveal time? Redirect to reveal page
+    if (status.isRevealTime && status.hasMatch) {
+        window.location.href = 'reveal.html';
+        return;
+    }
+
+    // Update message based on match status
+    if (status.hasMatch) {
+        updateMessage('Your match has been found! 🎉<br>Hold tight until the big reveal.');
+    } else {
+        updateMessage('Thank you for your patience.<br>We\'re finding you the perfect match!');
+    }
+
+    // Get reveal time (from user data or server default)
+    let revealAtMs = status.revealAtMs;
+    if (!revealAtMs && status.serverConfig) {
+        revealAtMs = status.serverConfig.defaultRevealAtMs;
+    }
+
+    if (revealAtMs) {
+        const revealDate = new Date(revealAtMs);
+        startCountdownWithDate(revealDate);
+
+        // Show test mode indicator if in test mode
+        if (status.testMode || status.serverConfig?.testMode) {
+            console.log("🧪 TEST MODE active - reveal in 2 minutes");
+        }
+    } else {
+        // Fallback to local config
+        startCountdownWithDate(CONFIG.REVEAL_DATE);
+    }
+}
+
+// Update the message display
+function updateMessage(html) {
+    const msgEl = document.getElementById('match-message');
+    if (msgEl) {
+        msgEl.innerHTML = html;
+    }
+}
+
+// Start countdown to a specific date
+function startCountdownWithDate(revealDate) {
     function updateCountdown() {
         const now = new Date();
         const diff = revealDate - now;
@@ -61,13 +132,8 @@ function startCountdown() {
             document.getElementById('minutes').textContent = '00';
             document.getElementById('seconds').textContent = '00';
 
-            // Show a message instead of auto-redirecting
-            const msgEl = document.getElementById('match-message');
-            if (msgEl) {
-                msgEl.innerHTML = '🎉 It\'s reveal time! <a href="reveal.html" class="text-pink">Click here to see your match!</a>';
-            }
-
-            // Stop the interval
+            // Show reveal message
+            updateMessage('🎉 It\'s reveal time! <a href="reveal.html" class="text-pink">Click here to see your match!</a>');
             return;
         }
 
