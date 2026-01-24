@@ -69,18 +69,41 @@
                     screen users for criminal history.</p>
 
                 <h2>8. Contact</h2>
-                <p>For questions about these terms, please contact support@myval.com</p>
+                <p>For questions about these terms, please contact <a
+                        href="mailto:myval.help@gmail.com">myval.help@gmail.com</a></p>
             </div>
         </div>
     </section>
 
     <!-- Footer -->
     <footer class="footer">
-        <div class="footer-links">
-            <a href="terms.html" class="footer-link">Terms</a>
-            <a href="privacy.html" class="footer-link">Privacy</a>
+        <!-- Desktop Footer -->
+        <div class="footer-desktop">
+            <div class="footer-links">
+                <a href="terms.html" class="footer-link">Terms</a>
+                <a href="privacy.html" class="footer-link">Privacy</a>
+                <a href="refund.html" class="footer-link">Refund Policy</a>
+                <a href="mailto:myval.help@gmail.com" class="footer-link">Contact Support</a>
+            </div>
+            <p class="footer-copy">© 2026 My Val. All rights reserved.</p>
         </div>
-        <p class="footer-copy">© 2026 My Val. All rights reserved.</p>
+
+        <!-- Mobile Footer -->
+        <div class="footer-mobile">
+            <div class="footer-mobile-links">
+                <a href="mailto:myval.help@gmail.com" class="footer-mobile-link">Contact Support</a>
+                <button class="useful-links-toggle"
+                    onclick="this.classList.toggle('open'); this.nextElementSibling.classList.toggle('open');">
+                    Useful Links
+                </button>
+                <div class="useful-links-dropdown">
+                    <a href="terms.html">Terms of Service</a>
+                    <a href="privacy.html">Privacy Policy</a>
+                    <a href="refund.html">Refund Policy</a>
+                </div>
+            </div>
+            <p class="footer-copy">© 2026 My Val. All rights reserved.</p>
+        </div>
     </footer>
 </body>
 
