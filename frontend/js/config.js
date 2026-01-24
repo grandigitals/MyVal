@@ -9,9 +9,8 @@ const CONFIG = {
     APP_NAME: 'My Val',
     APP_VERSION: '2.0.0',
 
-    // Reveal Date - TESTING: Set to near time for testing
-    // Change back to 'new Date('2026-02-14T00:00:00')' for production
-    REVEAL_DATE: new Date('2026-01-23T14:27:00'),
+    // Reveal Date - February 10th, 2026 at midnight Nigeria time (GMT+1)
+    REVEAL_DATE: new Date('2026-02-10T00:00:00+01:00'),
 
     // Payment - Paystack
     PAYSTACK_PUBLIC_KEY: 'pk_test_9c369555960d671de6bf186a73eb6b594df2f357',

@@ -1,5 +1,6 @@
 // =====================================================
 // MY VAL - Waiting Page Logic
+// Shows countdown to February 10th reveal date
 // =====================================================
 
 document.addEventListener('DOMContentLoaded', async function () {
@@ -14,35 +15,44 @@ document.addEventListener('DOMContentLoaded', async function () {
             return;
         }
 
-        // Check if reveal date - redirect to reveal
+        // Check if reveal date has passed AND user has a match
         if (Database.isRevealDate() && userData.matchId) {
             window.location.href = 'reveal.html';
             return;
         }
 
-        // Update message if match found
-        if (userData.matchId) {
-            document.getElementById('match-message').innerHTML =
-                'Your match has been found! 🎉<br>Hold tight until the big reveal.';
+        // Update message based on match status
+        const msgEl = document.getElementById('match-message');
+        if (msgEl) {
+            if (userData.matchId) {
+                msgEl.innerHTML = 'Your match has been found! 🎉<br>Hold tight until the big reveal.';
+            } else {
+                msgEl.innerHTML = 'Thank you for your patience.<br>Your match will be revealed soon!';
+            }
         }
 
-        // Start countdown
+        // Start countdown to Feb 10
         startCountdown();
 
     } catch (error) {
-        console.error('Auth required');
+        console.error('Auth required:', error);
     }
 
     // Logout button
-    document.getElementById('logout-btn').addEventListener('click', function () {
-        Auth.logout();
-    });
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', function () {
+            Auth.logout();
+        });
+    }
 });
 
 function startCountdown() {
+    const revealDate = CONFIG.REVEAL_DATE;
+
     function updateCountdown() {
         const now = new Date();
-        const diff = CONFIG.REVEAL_DATE - now;
+        const diff = revealDate - now;
 
         if (diff <= 0) {
             // Reveal date arrived!
@@ -51,10 +61,13 @@ function startCountdown() {
             document.getElementById('minutes').textContent = '00';
             document.getElementById('seconds').textContent = '00';
 
-            // Redirect to reveal page after a short delay
-            setTimeout(() => {
-                window.location.href = 'reveal.html';
-            }, 2000);
+            // Show a message instead of auto-redirecting
+            const msgEl = document.getElementById('match-message');
+            if (msgEl) {
+                msgEl.innerHTML = '🎉 It\'s reveal time! <a href="reveal.html" class="text-pink">Click here to see your match!</a>';
+            }
+
+            // Stop the interval
             return;
         }
 

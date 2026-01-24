@@ -1,10 +1,13 @@
 // =====================================================
 // MY VAL - Reveal Page Logic
+// Only works after February 10th reveal date
 // =====================================================
 
 document.addEventListener('DOMContentLoaded', async function () {
-    // Require authentication
+    const container = document.getElementById('reveal-content');
+
     try {
+        // Check authentication
         const authUser = await Auth.requireAuth();
         const userData = await Database.getUser(authUser.uid);
 
@@ -14,16 +17,15 @@ document.addEventListener('DOMContentLoaded', async function () {
             return;
         }
 
-        // Check if reveal date
+        // *** KEY CHECK: Is it reveal date yet? ***
         if (!Database.isRevealDate()) {
-            // Not reveal time yet
-            showNotYet();
+            showNotYet(container);
             return;
         }
 
-        // Check if has match
+        // Check if user has a match
         if (!userData.matchId) {
-            showNoMatch();
+            showNoMatch(container);
             return;
         }
 
@@ -31,21 +33,26 @@ document.addEventListener('DOMContentLoaded', async function () {
         const matchData = await Database.getMatch(userData.matchId);
 
         if (!matchData) {
-            showNoMatch();
+            showNoMatch(container);
             return;
         }
 
-        // Show match!
-        showMatch(matchData);
+        // Show the match!
+        showMatch(container, matchData);
 
-        // Mark as revealed (so we know user has seen their match)
+        // Mark as revealed in database
         if (!userData.matchRevealed) {
-            await Database.updateUser(authUser.uid, { matchRevealed: true });
-            console.log('✅ Match marked as revealed');
+            try {
+                await Database.updateUser(authUser.uid, { matchRevealed: true });
+                console.log('✅ Match marked as revealed');
+            } catch (e) {
+                console.warn('Could not mark as revealed:', e);
+            }
         }
 
     } catch (error) {
-        console.error('Auth required');
+        console.error('Reveal page error:', error);
+        showError(container);
     }
 
     // Logout button
@@ -57,13 +64,16 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
 });
 
-function showNotYet() {
-    const container = document.getElementById('reveal-content');
+function showNotYet(container) {
+    if (!container) return;
     container.innerHTML = `
         <div class="no-match">
             <div class="no-match-icon">🔒</div>
             <h2 class="no-match-title">Not Yet!</h2>
-            <p class="no-match-message">Your match will be revealed on February 10th, 2026.</p>
+            <p class="no-match-message">
+                Your match will be revealed on <strong>February 10th, 2026</strong>.<br>
+                Please wait until the reveal date!
+            </p>
             <a href="waiting.html" class="btn btn-primary mt-xl">
                 View Countdown
             </a>
@@ -71,8 +81,8 @@ function showNotYet() {
     `;
 }
 
-function showNoMatch() {
-    const container = document.getElementById('reveal-content');
+function showNoMatch(container) {
+    if (!container) return;
     container.innerHTML = `
         <div class="no-match">
             <div class="no-match-icon">😔</div>
@@ -88,10 +98,25 @@ function showNoMatch() {
     `;
 }
 
-function showMatch(match) {
+function showError(container) {
+    if (!container) return;
+    container.innerHTML = `
+        <div class="no-match">
+            <div class="no-match-icon">⚠️</div>
+            <h2 class="no-match-title">Something Went Wrong</h2>
+            <p class="no-match-message">Please try again later.</p>
+            <a href="dashboard.html" class="btn btn-secondary mt-xl">
+                Back to Dashboard
+            </a>
+        </div>
+    `;
+}
+
+function showMatch(container, match) {
+    if (!container) return;
+
     const genderEmoji = match.gender === 'female' ? '👩' : match.gender === 'male' ? '👨' : '🧑';
 
-    const container = document.getElementById('reveal-content');
     container.innerHTML = `
         <div class="reveal-header">
             <div class="reveal-confetti">🎉💗🎉</div>
@@ -104,17 +129,17 @@ function showMatch(match) {
                 ${genderEmoji}
             </div>
             
-            <h2 class="match-name">${match.fullName}</h2>
+            <h2 class="match-name">${match.fullName || 'Your Match'}</h2>
             
             <div class="match-details">
                 <div class="match-detail">
                     <span class="match-detail-icon">📍</span>
-                    <span class="match-detail-value">${match.city}</span>
+                    <span class="match-detail-value">${match.city || ''}</span>
                 </div>
             </div>
             
             <div class="match-phone">
-                📱 ${match.phoneNumber}
+                📱 ${match.phoneNumber || match.phone || 'N/A'}
             </div>
             
             <p class="match-note">
@@ -127,23 +152,4 @@ function showMatch(match) {
             ← Back to Dashboard
         </a>
     `;
-    //New code pasted
-    const API_BASE = "https://myval-api.onrender.com";
-
-    async function triggerRevealCheck() {
-        const user = firebase.auth().currentUser;
-        if (!user) return;
-
-        const token = await user.getIdToken(true);
-
-        await fetch(`${API_BASE}/match/reveal`, {
-            method: "GET",
-            headers: { Authorization: `Bearer ${token}` },
-        });
-    }
-
-    firebase.auth().onAuthStateChanged((user) => {
-        if (user) triggerRevealCheck();
-    });
-
 }
