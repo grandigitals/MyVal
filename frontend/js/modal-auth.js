@@ -206,6 +206,10 @@ async function handleSignup(e) {
         // Auto-set gender preference (opposite gender)
         const genderPreference = gender === 'male' ? 'female' : gender === 'female' ? 'male' : 'any';
 
+        // Get promo code from URL if present
+        const urlParams = new URLSearchParams(window.location.search);
+        const promoCode = urlParams.get('promo') || null;
+
         // Save user data
         const userData = {
             uid: authResult.user.uid,
@@ -222,6 +226,7 @@ async function handleSignup(e) {
             paystackReference: null,
             matchId: null,
             matchRevealed: false,
+            promoCode: promoCode, // Track influencer promo code
             createdAt: new Date().toISOString()
         };
 

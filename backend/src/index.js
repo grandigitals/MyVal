@@ -7,7 +7,8 @@ const express = require("express");
 const cors = require("cors");
 
 const paymentRoutes = require("./routes/payment");
-const matchRoutes = require("./routes/match"); // ✅ ADD THIS LINE
+const matchRoutes = require("./routes/match");
+const promoRoutes = require("./routes/promo");
 
 const { initializeFirebase } = require("./services/firebase");
 
@@ -35,7 +36,8 @@ app.use((req, res, next) => {
 
 // Routes
 app.use("/pay", paymentRoutes);
-app.use("/match", matchRoutes); // ✅ ADD THIS LINE
+app.use("/match", matchRoutes);
+app.use("/promo", promoRoutes);
 
 // Health check
 app.get("/", (req, res) => {

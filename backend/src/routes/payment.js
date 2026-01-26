@@ -60,6 +60,25 @@ router.get("/verify", async (req, res) => {
 
         console.log(`✅ User ${uid} marked as paid`);
 
+        // Track promo code if user has one
+        const userDoc = await db.collection("users").doc(uid).get();
+        const userData = userDoc.data();
+        if (userData?.promoCode) {
+            const promoRef = db.collection("promos").doc(userData.promoCode.toLowerCase());
+            const promoDoc = await promoRef.get();
+
+            if (promoDoc.exists) {
+                // Increment paid signups count
+                await promoRef.update({
+                    paidSignups: (promoDoc.data().paidSignups || 0) + 1,
+                    lastPaidAt: new Date().toISOString()
+                });
+                console.log(`📊 Promo "${userData.promoCode}" incremented paidSignups`);
+            } else {
+                console.log(`⚠️ Promo code "${userData.promoCode}" not found in promos collection`);
+            }
+        }
+
         // Auto match after payment
         let matchResult = { matched: false };
         try {
