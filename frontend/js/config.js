@@ -13,7 +13,7 @@ const CONFIG = {
     REVEAL_DATE: new Date('2026-02-10T00:00:00+01:00'),
 
     // Payment - Paystack
-    PAYSTACK_PUBLIC_KEY: 'pk_test_9c369555960d671de6bf186a73eb6b594df2f357',
+    PAYSTACK_PUBLIC_KEY: 'pk_live_5dc75e32458b1e76fd04b3ec74e9563255db81c9',
     PAYMENT_AMOUNT: 200000, // Amount in kobo (₦2,000)
     PAYMENT_CURRENCY: 'NGN',
 
