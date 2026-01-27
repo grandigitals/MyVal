@@ -68,9 +68,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            // Get promo code from URL if present
+            // Get referral code from URL if present
             const urlParams = new URLSearchParams(window.location.search);
-            const promoCode = urlParams.get('promo') || null;
+            const refCode = urlParams.get('ref') || null;
 
             // Save user data
             const userData = {
@@ -88,7 +88,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 paystackReference: null,
                 matchId: null,
                 matchRevealed: false,
-                promoCode: promoCode, // Track influencer promo code
+                refCode: refCode, // Track influencer referral code
                 createdAt: new Date().toISOString()
             };
 

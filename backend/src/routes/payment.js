@@ -60,22 +60,22 @@ router.get("/verify", async (req, res) => {
 
         console.log(`✅ User ${uid} marked as paid`);
 
-        // Track promo code if user has one
+        // Track referral code if user has one
         const userDoc = await db.collection("users").doc(uid).get();
         const userData = userDoc.data();
-        if (userData?.promoCode) {
-            const promoRef = db.collection("promos").doc(userData.promoCode.toLowerCase());
-            const promoDoc = await promoRef.get();
+        if (userData?.refCode) {
+            const refRef = db.collection("referrals").doc(userData.refCode.toLowerCase());
+            const refDoc = await refRef.get();
 
-            if (promoDoc.exists) {
+            if (refDoc.exists) {
                 // Increment paid signups count
-                await promoRef.update({
-                    paidSignups: (promoDoc.data().paidSignups || 0) + 1,
+                await refRef.update({
+                    paidSignups: (refDoc.data().paidSignups || 0) + 1,
                     lastPaidAt: new Date().toISOString()
                 });
-                console.log(`📊 Promo "${userData.promoCode}" incremented paidSignups`);
+                console.log(`📊 Referral "${userData.refCode}" incremented paidSignups`);
             } else {
-                console.log(`⚠️ Promo code "${userData.promoCode}" not found in promos collection`);
+                console.log(`⚠️ Referral code "${userData.refCode}" not found in referrals collection`);
             }
         }
 

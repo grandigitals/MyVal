@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Partner Dashboard - My Val</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="icon" href="assets/logo.png">
+    <style>
+        .partner-section {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .partner-card {
+            max-width: 450px;
+            width: 100%;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .stat-box {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--pulse-pink);
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: var(--cloud-white-muted);
+            margin-top: 0.25rem;
+        }
+
+        .referral-link {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1.5rem;
+            word-break: break-all;
+            font-family: monospace;
+            font-size: 0.85rem;
+        }
+
+        .copy-btn {
+            margin-top: 0.5rem;
+            width: 100%;
+        }
+
+        #login-section,
+        #stats-section {
+            display: none;
+        }
+
+        #login-section.active,
+        #stats-section.active {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <a href="index.html" class="logo">
+            <img src="assets/logo.png" alt="My Val" class="logo-img">
+        </a>
+    </nav>
+
+    <section class="partner-section">
+        <div class="partner-card card card-glass">
+            <!-- Login Section -->
+            <div id="login-section" class="active">
+                <h1 class="text-center mb-lg">Partner Dashboard</h1>
+                <p class="text-muted text-center mb-xl">Enter your referral code and PIN to view your stats.</p>
+
+                <form id="partner-login-form">
+                    <div class="form-group">
+                        <label for="ref-code">Referral Code</label>
+                        <input type="text" id="ref-code" class="form-control" placeholder="e.g. danny9ce" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="ref-pin">PIN</label>
+                        <input type="password" id="ref-pin" class="form-control" placeholder="Enter your PIN" required>
+                    </div>
+                    <div id="login-error" class="error-message" style="display: none;"></div>
+                    <button type="submit" class="btn btn-primary btn-full mt-lg" id="login-btn">View Stats</button>
+                </form>
+            </div>
+
+            <!-- Stats Section -->
+            <div id="stats-section">
+                <h1 class="text-center">Welcome, <span id="partner-name">Partner</span>! 👋</h1>
+                <p class="text-muted text-center">Here's how your referral link is performing.</p>
+
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <div class="stat-value" id="paid-signups">0</div>
+                        <div class="stat-label">Paid Signups</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value" id="total-signups">0</div>
+                        <div class="stat-label">Total Signups</div>
+                    </div>
+                </div>
+
+                <div class="mt-xl">
+                    <p class="text-muted mb-sm">Your Referral Link:</p>
+                    <div class="referral-link" id="referral-link">https://myval-b9f7e.web.app/?ref=...</div>
+                    <button class="btn btn-secondary copy-btn" onclick="copyLink()">📋 Copy Link</button>
+                </div>
+
+                <p class="text-muted text-center mt-xl" style="font-size: 0.85rem;">
+                    Last paid signup: <span id="last-paid">Never</span>
+                </p>
+
+                <button class="btn btn-secondary btn-full mt-lg" onclick="logout()">Switch Account</button>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        const API_BASE = "https://myval-api.onrender.com";
+        let currentCode = "";
+
+        document.getElementById("partner-login-form").addEventListener("submit", async function (e) {
+            e.preventDefault();
+
+            const code = document.getElementById("ref-code").value.trim().toLowerCase();
+            const pin = document.getElementById("ref-pin").value.trim();
+            const errorEl = document.getElementById("login-error");
+            const btn = document.getElementById("login-btn");
+
+            errorEl.style.display = "none";
+            btn.disabled = true;
+            btn.textContent = "Checking...";
+
+            try {
+                const response = await fetch(`${API_BASE}/promo/verify`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ code, pin })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    currentCode = code;
+                    showStats(data);
+                } else {
+                    errorEl.textContent = data.error || "Invalid code or PIN";
+                    errorEl.style.display = "block";
+                }
+            } catch (err) {
+                errorEl.textContent = "Connection error. Please try again.";
+                errorEl.style.display = "block";
+            }
+
+            btn.disabled = false;
+            btn.textContent = "View Stats";
+        });
+
+        function showStats(data) {
+            document.getElementById("login-section").classList.remove("active");
+            document.getElementById("stats-section").classList.add("active");
+
+            document.getElementById("partner-name").textContent = data.name || data.code;
+            document.getElementById("paid-signups").textContent = data.paidSignups || 0;
+            document.getElementById("total-signups").textContent = data.totalSignups || 0;
+            document.getElementById("referral-link").textContent = `https://myval-b9f7e.web.app/?ref=${data.code}`;
+
+            if (data.lastPaidAt) {
+                const date = new Date(data.lastPaidAt);
+                document.getElementById("last-paid").textContent = date.toLocaleDateString('en-US', {
+                    month: 'short', day: 'numeric', year: 'numeric'
+                });
+            } else {
+                document.getElementById("last-paid").textContent = "No paid signups yet";
+            }
+        }
+
+        function copyLink() {
+            const link = document.getElementById("referral-link").textContent;
+            navigator.clipboard.writeText(link).then(() => {
+                const btn = document.querySelector(".copy-btn");
+                btn.textContent = "✅ Copied!";
+                setTimeout(() => btn.textContent = "📋 Copy Link", 2000);
+            });
+        }
+
+        function logout() {
+            document.getElementById("stats-section").classList.remove("active");
+            document.getElementById("login-section").classList.add("active");
+            document.getElementById("ref-code").value = "";
+            document.getElementById("ref-pin").value = "";
+            currentCode = "";
+        }
+    </script>
+</body>
+
+</html>
