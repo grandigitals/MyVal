@@ -58,8 +58,8 @@ router.post("/verify", async (req, res) => {
 
         const data = doc.data();
 
-        // Check PIN
-        if (data.pin !== pin) {
+        // Check PIN (convert to string for comparison in case Firestore stores as number)
+        if (String(data.pin) !== String(pin)) {
             return res.status(401).json({ success: false, error: "Invalid PIN" });
         }
 
