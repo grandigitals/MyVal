@@ -36,7 +36,7 @@ router.get("/verify", async (req, res) => {
             return res.status(400).json({ success: false, error: "Payment not successful", paystackStatus: data.status });
         }
 
-        const expectedAmount = 200000;
+        const expectedAmount = 10000;//200000;
         if (data.amount !== expectedAmount || data.currency !== "NGN") {
             return res.status(400).json({ success: false, error: "Invalid payment amount/currency" });
         }
