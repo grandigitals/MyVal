@@ -79,6 +79,37 @@ router.post("/verify", async (req, res) => {
     }
 });
 
+// POST /promo/track-signup - Track a signup for a referral code
+router.post("/track-signup", async (req, res) => {
+    try {
+        const { code } = req.body;
+
+        if (!code) {
+            return res.status(400).json({ success: false, error: "Referral code required" });
+        }
+
+        const db = getAdminDb();
+        const refRef = db.collection("referrals").doc(code.toLowerCase());
+        const refDoc = await refRef.get();
+
+        if (refDoc.exists) {
+            // Increment total signups count
+            await refRef.update({
+                totalSignups: (refDoc.data().totalSignups || 0) + 1,
+                lastSignupAt: new Date().toISOString()
+            });
+            console.log(`📊 Referral "${code}" incremented totalSignups`);
+            return res.json({ success: true, message: "Signup tracked" });
+        } else {
+            console.log(`⚠️ Referral code "${code}" not found`);
+            return res.json({ success: false, error: "Referral code not found" });
+        }
+    } catch (err) {
+        console.error("Track signup error:", err);
+        return res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 // GET /promo/:code - Get stats for a specific referral code (public view - limited info)
 router.get("/:code", async (req, res) => {
     try {

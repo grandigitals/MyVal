@@ -94,6 +94,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
             await Database.saveUser(userData);
 
+            // Track referral signup if user has a ref code
+            if (refCode) {
+                try {
+                    await fetch('https://myval-api.onrender.com/promo/track-signup', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ code: refCode })
+                    });
+                } catch (e) {
+                    console.log('Referral tracking failed (non-fatal):', e);
+                }
+            }
+
             // Redirect to dashboard
             window.location.href = 'dashboard.html';
 

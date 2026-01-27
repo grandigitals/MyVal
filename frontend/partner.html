@@ -65,6 +65,11 @@
             width: 100%;
         }
 
+        .refresh-btn {
+            margin-top: 0.5rem;
+            width: 100%;
+        }
+
         #login-section,
         #stats-section {
             display: none;
@@ -126,6 +131,7 @@
                     <p class="text-muted mb-sm">Your Referral Link:</p>
                     <div class="referral-link" id="referral-link">https://myval-b9f7e.web.app/?ref=...</div>
                     <button class="btn btn-secondary copy-btn" onclick="copyLink()">📋 Copy Link</button>
+                    <button class="btn btn-secondary refresh-btn" onclick="refreshStats()">🔄 Refresh Stats</button>
                 </div>
 
                 <p class="text-muted text-center mt-xl" style="font-size: 0.85rem;">
@@ -140,6 +146,20 @@
     <script>
         const API_BASE = "https://myval-api.onrender.com";
         let currentCode = "";
+        let currentPin = "";
+
+        // Check for saved session on page load
+        document.addEventListener("DOMContentLoaded", function () {
+            const savedCode = localStorage.getItem("partner_code");
+            const savedPin = localStorage.getItem("partner_pin");
+
+            if (savedCode && savedPin) {
+                // Auto-login with saved credentials
+                currentCode = savedCode;
+                currentPin = savedPin;
+                verifyAndShowStats(savedCode, savedPin);
+            }
+        });
 
         document.getElementById("partner-login-form").addEventListener("submit", async function (e) {
             e.preventDefault();
@@ -153,6 +173,17 @@
             btn.disabled = true;
             btn.textContent = "Checking...";
 
+            const success = await verifyAndShowStats(code, pin);
+
+            if (!success) {
+                btn.disabled = false;
+                btn.textContent = "View Stats";
+            }
+        });
+
+        async function verifyAndShowStats(code, pin) {
+            const errorEl = document.getElementById("login-error");
+
             try {
                 const response = await fetch(`${API_BASE}/promo/verify`, {
                     method: "POST",
@@ -164,19 +195,26 @@
 
                 if (data.success) {
                     currentCode = code;
+                    currentPin = pin;
+                    // Save to localStorage for session persistence
+                    localStorage.setItem("partner_code", code);
+                    localStorage.setItem("partner_pin", pin);
                     showStats(data);
+                    return true;
                 } else {
                     errorEl.textContent = data.error || "Invalid code or PIN";
                     errorEl.style.display = "block";
+                    // Clear saved session if invalid
+                    localStorage.removeItem("partner_code");
+                    localStorage.removeItem("partner_pin");
+                    return false;
                 }
             } catch (err) {
                 errorEl.textContent = "Connection error. Please try again.";
                 errorEl.style.display = "block";
+                return false;
             }
-
-            btn.disabled = false;
-            btn.textContent = "View Stats";
-        });
+        }
 
         function showStats(data) {
             document.getElementById("login-section").classList.remove("active");
@@ -197,6 +235,19 @@
             }
         }
 
+        async function refreshStats() {
+            if (currentCode && currentPin) {
+                const btn = document.querySelector(".refresh-btn");
+                btn.textContent = "🔄 Refreshing...";
+                btn.disabled = true;
+
+                await verifyAndShowStats(currentCode, currentPin);
+
+                btn.textContent = "🔄 Refresh Stats";
+                btn.disabled = false;
+            }
+        }
+
         function copyLink() {
             const link = document.getElementById("referral-link").textContent;
             navigator.clipboard.writeText(link).then(() => {
@@ -207,11 +258,16 @@
         }
 
         function logout() {
+            // Clear saved session
+            localStorage.removeItem("partner_code");
+            localStorage.removeItem("partner_pin");
+
             document.getElementById("stats-section").classList.remove("active");
             document.getElementById("login-section").classList.add("active");
             document.getElementById("ref-code").value = "";
             document.getElementById("ref-pin").value = "";
             currentCode = "";
+            currentPin = "";
         }
     </script>
 </body>
