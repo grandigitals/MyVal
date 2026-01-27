@@ -7,6 +7,29 @@ const { getAdminDb } = require("../services/firebase");
 
 const router = express.Router();
 
+// Earnings per paid signup (20% of ₦2,000)
+const EARNINGS_PER_SIGNUP = 400;
+
+// Admin email for payout management
+const ADMIN_EMAIL = "danielaleriwa@gmail.com";
+
+// Helper: Calculate earnings data
+function calculateEarnings(data) {
+    const paidSignups = data.paidSignups || 0;
+    const totalEarnings = paidSignups * EARNINGS_PER_SIGNUP;
+    const amountPaidOut = data.amountPaidOut || 0;
+    const pendingBalance = totalEarnings - amountPaidOut;
+
+    return {
+        paidSignups,
+        totalEarnings,
+        amountPaidOut,
+        pendingBalance,
+        payoutRequested: data.payoutRequested || false,
+        payoutRequestedAt: data.payoutRequestedAt || null
+    };
+}
+
 // GET /promo/stats - Get all referral codes and their stats (admin only)
 router.get("/stats", async (req, res) => {
     try {
@@ -16,11 +39,13 @@ router.get("/stats", async (req, res) => {
         const referrals = [];
         snapshot.forEach(doc => {
             const data = doc.data();
+            const earnings = calculateEarnings(data);
             referrals.push({
                 code: doc.id,
                 name: data.name || doc.id,
                 paidSignups: data.paidSignups || 0,
                 totalSignups: data.totalSignups || 0,
+                ...earnings,
                 createdAt: data.createdAt,
                 lastPaidAt: data.lastPaidAt
             });
@@ -63,18 +88,77 @@ router.post("/verify", async (req, res) => {
             return res.status(401).json({ success: false, error: "Invalid PIN" });
         }
 
-        // Return stats
+        // Calculate earnings
+        const earnings = calculateEarnings(data);
+
+        // Return stats with earnings
         return res.json({
             success: true,
             code: doc.id,
             name: data.name || doc.id,
-            paidSignups: data.paidSignups || 0,
             totalSignups: data.totalSignups || 0,
+            ...earnings,
+            payoutHistory: data.payoutHistory || [],
             createdAt: data.createdAt,
             lastPaidAt: data.lastPaidAt
         });
     } catch (err) {
         console.error("Referral verify error:", err);
+        return res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// POST /promo/request-payout - Partner requests a payout
+router.post("/request-payout", async (req, res) => {
+    try {
+        const { code, pin } = req.body;
+
+        if (!code || !pin) {
+            return res.status(400).json({ success: false, error: "Code and PIN required" });
+        }
+
+        const db = getAdminDb();
+        const refRef = db.collection("referrals").doc(code.toLowerCase());
+        const doc = await refRef.get();
+
+        if (!doc.exists) {
+            return res.status(404).json({ success: false, error: "Referral code not found" });
+        }
+
+        const data = doc.data();
+
+        // Verify PIN
+        if (String(data.pin) !== String(pin)) {
+            return res.status(401).json({ success: false, error: "Invalid PIN" });
+        }
+
+        // Check if already requested
+        if (data.payoutRequested) {
+            return res.status(400).json({ success: false, error: "Payout already requested" });
+        }
+
+        // Check if has pending balance
+        const earnings = calculateEarnings(data);
+        if (earnings.pendingBalance <= 0) {
+            return res.status(400).json({ success: false, error: "No pending balance to request" });
+        }
+
+        // Mark payout as requested
+        await refRef.update({
+            payoutRequested: true,
+            payoutRequestedAt: new Date().toISOString(),
+            payoutRequestedAmount: earnings.pendingBalance
+        });
+
+        console.log(`💰 Payout requested for "${code}" - ₦${earnings.pendingBalance}`);
+
+        return res.json({
+            success: true,
+            message: "Payout requested successfully",
+            requestedAmount: earnings.pendingBalance
+        });
+    } catch (err) {
+        console.error("Request payout error:", err);
         return res.status(500).json({ success: false, error: err.message });
     }
 });
@@ -106,6 +190,113 @@ router.post("/track-signup", async (req, res) => {
         }
     } catch (err) {
         console.error("Track signup error:", err);
+        return res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// =====================================================
+// ADMIN ENDPOINTS
+// =====================================================
+
+// GET /promo/admin/partners - Get all partners with payout info (admin only)
+router.get("/admin/partners", async (req, res) => {
+    try {
+        const { email } = req.query;
+
+        // Verify admin email
+        if (email !== ADMIN_EMAIL) {
+            return res.status(403).json({ success: false, error: "Unauthorized" });
+        }
+
+        const db = getAdminDb();
+        const snapshot = await db.collection("referrals").get();
+
+        const partners = [];
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            const earnings = calculateEarnings(data);
+            partners.push({
+                code: doc.id,
+                name: data.name || doc.id,
+                ...earnings,
+                payoutHistory: data.payoutHistory || [],
+                bankName: data.bankName || "",
+                accountNumber: data.accountNumber || "",
+                accountName: data.accountName || ""
+            });
+        });
+
+        // Sort by pending balance descending (who needs to be paid first)
+        partners.sort((a, b) => {
+            // Prioritize those with payout requests
+            if (a.payoutRequested && !b.payoutRequested) return -1;
+            if (!a.payoutRequested && b.payoutRequested) return 1;
+            return b.pendingBalance - a.pendingBalance;
+        });
+
+        return res.json({
+            success: true,
+            totalPartners: partners.length,
+            partners
+        });
+    } catch (err) {
+        console.error("Admin partners error:", err);
+        return res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// POST /promo/admin/mark-paid - Mark a payout as complete
+router.post("/admin/mark-paid", async (req, res) => {
+    try {
+        const { email, code, amount, note } = req.body;
+
+        // Verify admin email
+        if (email !== ADMIN_EMAIL) {
+            return res.status(403).json({ success: false, error: "Unauthorized" });
+        }
+
+        if (!code || !amount) {
+            return res.status(400).json({ success: false, error: "Code and amount required" });
+        }
+
+        const db = getAdminDb();
+        const refRef = db.collection("referrals").doc(code.toLowerCase());
+        const doc = await refRef.get();
+
+        if (!doc.exists) {
+            return res.status(404).json({ success: false, error: "Partner not found" });
+        }
+
+        const data = doc.data();
+        const currentPaidOut = data.amountPaidOut || 0;
+        const payoutHistory = data.payoutHistory || [];
+
+        // Add to payout history
+        payoutHistory.push({
+            amount: Number(amount),
+            paidAt: new Date().toISOString(),
+            note: note || ""
+        });
+
+        // Update document
+        await refRef.update({
+            amountPaidOut: currentPaidOut + Number(amount),
+            payoutRequested: false,
+            payoutRequestedAt: null,
+            payoutRequestedAmount: null,
+            payoutHistory,
+            lastPayoutAt: new Date().toISOString()
+        });
+
+        console.log(`✅ Admin marked ₦${amount} paid to "${code}"`);
+
+        return res.json({
+            success: true,
+            message: `₦${amount} marked as paid to ${data.name || code}`,
+            newTotalPaidOut: currentPaidOut + Number(amount)
+        });
+    } catch (err) {
+        console.error("Mark paid error:", err);
         return res.status(500).json({ success: false, error: err.message });
     }
 });

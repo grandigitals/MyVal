@@ -20,7 +20,7 @@
         }
 
         .partner-card {
-            max-width: 450px;
+            max-width: 500px;
             width: 100%;
         }
 
@@ -34,20 +34,83 @@
         .stat-box {
             background: rgba(255, 255, 255, 0.05);
             border-radius: 12px;
-            padding: 1.5rem;
+            padding: 1.25rem;
             text-align: center;
         }
 
         .stat-value {
-            font-size: 2.5rem;
+            font-size: 2rem;
             font-weight: 700;
             color: var(--pulse-pink);
         }
 
         .stat-label {
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             color: var(--cloud-white-muted);
             margin-top: 0.25rem;
+        }
+
+        /* Earnings Section */
+        .earnings-section {
+            background: linear-gradient(135deg, rgba(255, 107, 157, 0.15), rgba(255, 154, 139, 0.15));
+            border: 1px solid rgba(255, 107, 157, 0.3);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .earnings-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .earnings-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 0.75rem;
+        }
+
+        .earnings-box {
+            text-align: center;
+            padding: 0.75rem;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+        }
+
+        .earnings-value {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--cloud-white);
+        }
+
+        .earnings-value.pending {
+            color: #4ade80;
+        }
+
+        .earnings-label {
+            font-size: 0.7rem;
+            color: var(--cloud-white-muted);
+            margin-top: 0.25rem;
+        }
+
+        .payout-status {
+            margin-top: 1rem;
+            padding: 0.75rem;
+            background: rgba(74, 222, 128, 0.15);
+            border: 1px solid rgba(74, 222, 128, 0.3);
+            border-radius: 8px;
+            font-size: 0.85rem;
+            text-align: center;
+        }
+
+        .payout-status.requested {
+            background: rgba(251, 191, 36, 0.15);
+            border-color: rgba(251, 191, 36, 0.3);
+            color: #fbbf24;
         }
 
         .referral-link {
@@ -60,14 +123,14 @@
             font-size: 0.85rem;
         }
 
-        .copy-btn {
+        .btn-row {
+            display: flex;
+            gap: 0.5rem;
             margin-top: 0.5rem;
-            width: 100%;
         }
 
-        .refresh-btn {
-            margin-top: 0.5rem;
-            width: 100%;
+        .btn-row .btn {
+            flex: 1;
         }
 
         #login-section,
@@ -78,6 +141,12 @@
         #login-section.active,
         #stats-section.active {
             display: block;
+        }
+
+        @media (max-width: 480px) {
+            .earnings-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
@@ -127,11 +196,41 @@
                     </div>
                 </div>
 
+                <!-- Earnings Section -->
+                <div class="earnings-section">
+                    <div class="earnings-title">💰 Your Earnings</div>
+                    <div class="earnings-grid">
+                        <div class="earnings-box">
+                            <div class="earnings-value" id="total-earnings">₦0</div>
+                            <div class="earnings-label">Total Earned</div>
+                        </div>
+                        <div class="earnings-box">
+                            <div class="earnings-value" id="amount-paid">₦0</div>
+                            <div class="earnings-label">Paid Out</div>
+                        </div>
+                        <div class="earnings-box">
+                            <div class="earnings-value pending" id="pending-balance">₦0</div>
+                            <div class="earnings-label">Pending</div>
+                        </div>
+                    </div>
+
+                    <!-- Payout Status -->
+                    <div id="payout-status" class="payout-status" style="display: none;"></div>
+
+                    <!-- Request Payout Button -->
+                    <button id="request-payout-btn" class="btn btn-primary btn-full mt-lg" onclick="requestPayout()"
+                        style="display: none;">
+                        💸 Request Payout
+                    </button>
+                </div>
+
                 <div class="mt-xl">
                     <p class="text-muted mb-sm">Your Referral Link:</p>
-                    <div class="referral-link" id="referral-link">https://myval-b9f7e.web.app/?ref=...</div>
-                    <button class="btn btn-secondary copy-btn" onclick="copyLink()">📋 Copy Link</button>
-                    <button class="btn btn-secondary refresh-btn" onclick="refreshStats()">🔄 Refresh Stats</button>
+                    <div class="referral-link" id="referral-link">https://myval.buzz/?ref=...</div>
+                    <div class="btn-row">
+                        <button class="btn btn-secondary" onclick="copyLink()">📋 Copy</button>
+                        <button class="btn btn-secondary" onclick="refreshStats()">🔄 Refresh</button>
+                    </div>
                 </div>
 
                 <p class="text-muted text-center mt-xl" style="font-size: 0.85rem;">
@@ -147,6 +246,7 @@
         const API_BASE = "https://myval-api.onrender.com";
         let currentCode = "";
         let currentPin = "";
+        let currentData = null;
 
         // Check for saved session on page load
         document.addEventListener("DOMContentLoaded", function () {
@@ -154,7 +254,6 @@
             const savedPin = localStorage.getItem("partner_pin");
 
             if (savedCode && savedPin) {
-                // Auto-login with saved credentials
                 currentCode = savedCode;
                 currentPin = savedPin;
                 verifyAndShowStats(savedCode, savedPin);
@@ -196,7 +295,7 @@
                 if (data.success) {
                     currentCode = code;
                     currentPin = pin;
-                    // Save to localStorage for session persistence
+                    currentData = data;
                     localStorage.setItem("partner_code", code);
                     localStorage.setItem("partner_pin", pin);
                     showStats(data);
@@ -204,7 +303,6 @@
                 } else {
                     errorEl.textContent = data.error || "Invalid code or PIN";
                     errorEl.style.display = "block";
-                    // Clear saved session if invalid
                     localStorage.removeItem("partner_code");
                     localStorage.removeItem("partner_pin");
                     return false;
@@ -216,6 +314,10 @@
             }
         }
 
+        function formatCurrency(amount) {
+            return "₦" + (amount || 0).toLocaleString();
+        }
+
         function showStats(data) {
             document.getElementById("login-section").classList.remove("active");
             document.getElementById("stats-section").classList.add("active");
@@ -223,8 +325,34 @@
             document.getElementById("partner-name").textContent = data.name || data.code;
             document.getElementById("paid-signups").textContent = data.paidSignups || 0;
             document.getElementById("total-signups").textContent = data.totalSignups || 0;
-            document.getElementById("referral-link").textContent = `https://myval-b9f7e.web.app/?ref=${data.code}`;
+            document.getElementById("referral-link").textContent = `https://myval.buzz/?ref=${data.code}`;
 
+            // Earnings
+            document.getElementById("total-earnings").textContent = formatCurrency(data.totalEarnings);
+            document.getElementById("amount-paid").textContent = formatCurrency(data.amountPaidOut);
+            document.getElementById("pending-balance").textContent = formatCurrency(data.pendingBalance);
+
+            // Payout status and button
+            const payoutStatusEl = document.getElementById("payout-status");
+            const payoutBtn = document.getElementById("request-payout-btn");
+
+            if (data.payoutRequested) {
+                payoutStatusEl.style.display = "block";
+                payoutStatusEl.className = "payout-status requested";
+                payoutStatusEl.textContent = "⏳ Payout request submitted. We'll process it soon!";
+                payoutBtn.style.display = "none";
+            } else if (data.pendingBalance > 0) {
+                payoutStatusEl.style.display = "none";
+                payoutBtn.style.display = "block";
+                payoutBtn.textContent = `💸 Request Payout (${formatCurrency(data.pendingBalance)})`;
+            } else {
+                payoutStatusEl.style.display = "block";
+                payoutStatusEl.className = "payout-status";
+                payoutStatusEl.textContent = "✨ No pending balance. Keep sharing your link!";
+                payoutBtn.style.display = "none";
+            }
+
+            // Last paid signup
             if (data.lastPaidAt) {
                 const date = new Date(data.lastPaidAt);
                 document.getElementById("last-paid").textContent = date.toLocaleDateString('en-US', {
@@ -235,30 +363,52 @@
             }
         }
 
+        async function requestPayout() {
+            const btn = document.getElementById("request-payout-btn");
+            btn.disabled = true;
+            btn.textContent = "Requesting...";
+
+            try {
+                const response = await fetch(`${API_BASE}/promo/request-payout`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ code: currentCode, pin: currentPin })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Show success and refresh stats
+                    alert(`✅ Payout request submitted for ${formatCurrency(data.requestedAmount)}!\n\nWe'll process it soon.`);
+                    await refreshStats();
+                } else {
+                    alert("❌ " + (data.error || "Failed to request payout"));
+                    btn.disabled = false;
+                    btn.textContent = `💸 Request Payout`;
+                }
+            } catch (err) {
+                alert("Connection error. Please try again.");
+                btn.disabled = false;
+                btn.textContent = `💸 Request Payout`;
+            }
+        }
+
         async function refreshStats() {
             if (currentCode && currentPin) {
-                const btn = document.querySelector(".refresh-btn");
-                btn.textContent = "🔄 Refreshing...";
-                btn.disabled = true;
-
                 await verifyAndShowStats(currentCode, currentPin);
-
-                btn.textContent = "🔄 Refresh Stats";
-                btn.disabled = false;
             }
         }
 
         function copyLink() {
             const link = document.getElementById("referral-link").textContent;
             navigator.clipboard.writeText(link).then(() => {
-                const btn = document.querySelector(".copy-btn");
-                btn.textContent = "✅ Copied!";
-                setTimeout(() => btn.textContent = "📋 Copy Link", 2000);
+                const btns = document.querySelectorAll(".btn-row .btn");
+                btns[0].textContent = "✅ Copied!";
+                setTimeout(() => btns[0].textContent = "📋 Copy", 2000);
             });
         }
 
         function logout() {
-            // Clear saved session
             localStorage.removeItem("partner_code");
             localStorage.removeItem("partner_pin");
 
@@ -268,6 +418,7 @@
             document.getElementById("ref-pin").value = "";
             currentCode = "";
             currentPin = "";
+            currentData = null;
         }
     </script>
 </body>

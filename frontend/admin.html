@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - My Val</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="icon" href="assets/logo.png">
+    <style>
+        .admin-section {
+            min-height: 100vh;
+            padding: 6rem 2rem 2rem;
+        }
+
+        .admin-container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .admin-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .admin-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .partner-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .partner-info h3 {
+            font-size: 1.25rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .partner-info .code {
+            font-family: monospace;
+            color: var(--cloud-white-muted);
+            font-size: 0.9rem;
+        }
+
+        .partner-stats {
+            display: flex;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-item .value {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--pulse-pink);
+        }
+
+        .stat-item .label {
+            font-size: 0.75rem;
+            color: var(--cloud-white-muted);
+        }
+
+        .stat-item .value.pending {
+            color: #4ade80;
+        }
+
+        .stat-item .value.requested {
+            color: #fbbf24;
+        }
+
+        .partner-actions {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .amount-input {
+            width: 100px;
+            padding: 0.5rem;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(0, 0, 0, 0.3);
+            color: white;
+            font-size: 0.9rem;
+        }
+
+        .request-badge {
+            background: rgba(251, 191, 36, 0.2);
+            color: #fbbf24;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .login-card {
+            max-width: 400px;
+            margin: 4rem auto;
+        }
+
+        #login-section,
+        #admin-section {
+            display: none;
+        }
+
+        #login-section.active,
+        #admin-section.active {
+            display: block;
+        }
+
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .summary-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 1.25rem;
+            text-align: center;
+        }
+
+        .summary-card .value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--pulse-pink);
+        }
+
+        .summary-card .label {
+            font-size: 0.85rem;
+            color: var(--cloud-white-muted);
+            margin-top: 0.25rem;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 3rem;
+            color: var(--cloud-white-muted);
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <a href="index.html" class="logo">
+            <img src="assets/logo.png" alt="My Val" class="logo-img">
+        </a>
+    </nav>
+
+    <!-- Login Section -->
+    <section id="login-section" class="admin-section active">
+        <div class="login-card card card-glass">
+            <h1 class="text-center mb-lg">Admin Login</h1>
+            <p class="text-muted text-center mb-xl">Sign in with your admin account to manage payouts.</p>
+
+            <button id="google-login-btn" class="btn btn-primary btn-full" onclick="loginWithGoogle()">
+                🔐 Sign in with Google
+            </button>
+
+            <div id="login-error" class="error-message mt-lg" style="display: none;"></div>
+        </div>
+    </section>
+
+    <!-- Admin Dashboard -->
+    <section id="admin-section" class="admin-section">
+        <div class="admin-container">
+            <div class="admin-header">
+                <h1>Partner Payouts</h1>
+                <p class="text-muted">Manage partner earnings and payouts</p>
+                <button class="btn btn-secondary mt-lg" onclick="logout()">Logout</button>
+            </div>
+
+            <!-- Summary Cards -->
+            <div class="summary-cards">
+                <div class="summary-card">
+                    <div class="value" id="total-partners">0</div>
+                    <div class="label">Partners</div>
+                </div>
+                <div class="summary-card">
+                    <div class="value" id="total-pending">₦0</div>
+                    <div class="label">Total Pending</div>
+                </div>
+                <div class="summary-card">
+                    <div class="value" id="pending-requests">0</div>
+                    <div class="label">Payout Requests</div>
+                </div>
+            </div>
+
+            <!-- Partners List -->
+            <div id="partners-list"></div>
+        </div>
+    </section>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+
+    <script>
+        const API_BASE = "https://myval-api.onrender.com";
+        const ADMIN_EMAIL = "danielaleriwa@gmail.com";
+        let currentUserEmail = null;
+
+        // Firebase config
+        const firebaseConfig = {
+            apiKey: "AIzaSyCrLBJVzKSKP8p9Jy1f4DVoNH2bT8kUV5Q",
+            authDomain: "myval-b9f7e.firebaseapp.com",
+            projectId: "myval-b9f7e",
+            storageBucket: "myval-b9f7e.firebasestorage.app",
+            messagingSenderId: "806878791498",
+            appId: "1:806878791498:web:b32d55d8e9ba4b8952f19f",
+            measurementId: "G-6FV8PZ03DR"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+
+        // Check auth state on load
+        firebase.auth().onAuthStateChanged((user) => {
+            if (user && user.email === ADMIN_EMAIL) {
+                currentUserEmail = user.email;
+                showAdminDashboard();
+            } else if (user) {
+                // Wrong email
+                document.getElementById("login-error").textContent = "Access denied. Admin email required.";
+                document.getElementById("login-error").style.display = "block";
+                firebase.auth().signOut();
+            }
+        });
+
+        async function loginWithGoogle() {
+            const btn = document.getElementById("google-login-btn");
+            const errorEl = document.getElementById("login-error");
+            btn.disabled = true;
+            btn.textContent = "Signing in...";
+            errorEl.style.display = "none";
+
+            try {
+                const provider = new firebase.auth.GoogleAuthProvider();
+                const result = await firebase.auth().signInWithPopup(provider);
+
+                if (result.user.email !== ADMIN_EMAIL) {
+                    errorEl.textContent = "Access denied. Only admin can access this page.";
+                    errorEl.style.display = "block";
+                    await firebase.auth().signOut();
+                    btn.disabled = false;
+                    btn.textContent = "🔐 Sign in with Google";
+                    return;
+                }
+
+                currentUserEmail = result.user.email;
+                showAdminDashboard();
+            } catch (err) {
+                console.error("Login error:", err);
+                errorEl.textContent = err.message || "Login failed";
+                errorEl.style.display = "block";
+                btn.disabled = false;
+                btn.textContent = "🔐 Sign in with Google";
+            }
+        }
+
+        async function showAdminDashboard() {
+            document.getElementById("login-section").classList.remove("active");
+            document.getElementById("admin-section").classList.add("active");
+            await loadPartners();
+        }
+
+        function formatCurrency(amount) {
+            return "₦" + (amount || 0).toLocaleString();
+        }
+
+        async function loadPartners() {
+            const listEl = document.getElementById("partners-list");
+            listEl.innerHTML = "<p class='text-center text-muted'>Loading partners...</p>";
+
+            try {
+                const response = await fetch(`${API_BASE}/promo/admin/partners?email=${encodeURIComponent(currentUserEmail)}`);
+                const data = await response.json();
+
+                if (!data.success) {
+                    listEl.innerHTML = `<p class="text-center text-danger">${data.error}</p>`;
+                    return;
+                }
+
+                const partners = data.partners;
+
+                // Update summary
+                document.getElementById("total-partners").textContent = partners.length;
+                document.getElementById("total-pending").textContent = formatCurrency(
+                    partners.reduce((sum, p) => sum + (p.pendingBalance || 0), 0)
+                );
+                document.getElementById("pending-requests").textContent =
+                    partners.filter(p => p.payoutRequested).length;
+
+                if (partners.length === 0) {
+                    listEl.innerHTML = "<div class='no-data'>No partners found</div>";
+                    return;
+                }
+
+                listEl.innerHTML = partners.map(partner => `
+                    <div class="admin-card" id="partner-${partner.code}">
+                        <div class="partner-row">
+                            <div class="partner-info">
+                                <h3>${partner.name} ${partner.payoutRequested ? '<span class="request-badge">REQUESTED</span>' : ''}</h3>
+                                <div class="code">${partner.code}</div>
+                            </div>
+                            <div class="partner-stats">
+                                <div class="stat-item">
+                                    <div class="value">${partner.paidSignups || 0}</div>
+                                    <div class="label">Paid Signups</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="value">${formatCurrency(partner.totalEarnings)}</div>
+                                    <div class="label">Earned</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="value">${formatCurrency(partner.amountPaidOut)}</div>
+                                    <div class="label">Paid Out</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="value ${partner.payoutRequested ? 'requested' : 'pending'}">${formatCurrency(partner.pendingBalance)}</div>
+                                    <div class="label">Pending</div>
+                                </div>
+                            </div>
+                            <div class="partner-actions">
+                                <input type="number" class="amount-input" id="amount-${partner.code}" 
+                                       placeholder="Amount" value="${partner.pendingBalance || ''}" />
+                                <button class="btn btn-primary" onclick="markPaid('${partner.code}')" 
+                                        ${partner.pendingBalance <= 0 ? 'disabled' : ''}>
+                                    Mark Paid
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `).join("");
+
+            } catch (err) {
+                console.error("Load partners error:", err);
+                listEl.innerHTML = "<p class='text-center text-danger'>Failed to load partners</p>";
+            }
+        }
+
+        async function markPaid(code) {
+            const amountInput = document.getElementById(`amount-${code}`);
+            const amount = parseFloat(amountInput.value);
+
+            if (!amount || amount <= 0) {
+                alert("Please enter a valid amount");
+                return;
+            }
+
+            if (!confirm(`Mark ₦${amount.toLocaleString()} as paid to ${code}?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/promo/admin/mark-paid`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        email: currentUserEmail,
+                        code,
+                        amount,
+                        note: "Paid via admin dashboard"
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert(`✅ ${data.message}`);
+                    await loadPartners();
+                } else {
+                    alert("❌ " + (data.error || "Failed to mark as paid"));
+                }
+            } catch (err) {
+                alert("Connection error. Please try again.");
+            }
+        }
+
+        function logout() {
+            firebase.auth().signOut();
+            currentUserEmail = null;
+            document.getElementById("admin-section").classList.remove("active");
+            document.getElementById("login-section").classList.add("active");
+            document.getElementById("google-login-btn").disabled = false;
+            document.getElementById("google-login-btn").textContent = "🔐 Sign in with Google";
+        }
+    </script>
+</body>
+
+</html>

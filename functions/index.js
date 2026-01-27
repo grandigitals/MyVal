@@ -53,7 +53,7 @@ exports.startPayment = functions.https.onCall(async (data, context) => {
             body: JSON.stringify({
                 email,
                 amount: 200000,
-                callback_url: 'https://myval-b9f7e.web.app/dashboard.html',
+                callback_url: 'https://myval.buzz/dashboard.html',
                 metadata: {
                     uid: context.auth.uid
                 }
