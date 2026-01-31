@@ -3,7 +3,7 @@
 // =====================================================
 
 const API_BASE = "https://myval-api.onrender.com";
-const AMOUNT_KOBO = 200000; // ₦2,000
+const AMOUNT_KOBO = 50000; // ₦500
 
 // ===============================
 // Verify payment with retry
@@ -37,7 +37,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const payBtn = document.getElementById("pay-btn");
     if (!payBtn) return;
 
-    const defaultBtnText = payBtn.textContent || "Pay ₦2,000 to Get Matched 💗";
+    const defaultBtnText = payBtn.textContent || "Pay ₦500 to Get Matched 💗";
     payBtn.disabled = true;
     payBtn.textContent = "Loading...";
 
