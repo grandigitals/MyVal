@@ -72,37 +72,19 @@ async function runMatchingForUser(userId) {
         let match = null;
         let tier = 0;
 
-        // Tier 1: Strict (same city + gender + age ±5)
-        match = findBestMatch(user, validCandidates, {
-            strictCity: true,
-            maxAgeDiff: AGE_RANGE_STRICT
-        });
+        // Tier 1: Same state + opposite gender (priority)
+        match = findBestMatch(user, validCandidates, { strictCity: true });
         if (match) {
             tier = 1;
-            console.log(`✅ [MATCH] Tier 1 match found: score=${match.score}`);
+            console.log(`✅ [MATCH] Tier 1 (same state) match found: score=${match.score}`);
         }
 
-        // Tier 2: Relaxed (same city + gender, no age limit)
+        // Tier 2: Any state + opposite gender (fallback)
         if (!match) {
-            match = findBestMatch(user, validCandidates, {
-                strictCity: true,
-                maxAgeDiff: null // No age restriction
-            });
+            match = findBestMatch(user, validCandidates, { strictCity: false });
             if (match) {
                 tier = 2;
-                console.log(`✅ [MATCH] Tier 2 match found: score=${match.score}`);
-            }
-        }
-
-        // Tier 3: Wider (any city + gender match)
-        if (!match) {
-            match = findBestMatch(user, validCandidates, {
-                strictCity: false,
-                maxAgeDiff: null
-            });
-            if (match) {
-                tier = 3;
-                console.log(`✅ [MATCH] Tier 3 match found: score=${match.score}`);
+                console.log(`✅ [MATCH] Tier 2 (cross-state) match found: score=${match.score}`);
             }
         }
 
@@ -148,7 +130,7 @@ async function runMatchingForUser(userId) {
 // Find best match with configurable constraints
 // =====================================================
 function findBestMatch(user, candidates, options = {}) {
-    const { strictCity = true, maxAgeDiff = null } = options;
+    const { strictCity = true } = options;
 
     const scored = candidates
         .map(candidate => ({
@@ -170,27 +152,10 @@ function findBestMatch(user, candidates, options = {}) {
 // Calculate compatibility score
 // =====================================================
 function calculateCompatibilityScore(user1, user2, options = {}) {
-    const { strictCity = true, maxAgeDiff = null } = options;
+    const { strictCity = true } = options;
     let score = 0;
 
-    // City matching
-    const city1 = norm(user1.city);
-    const city2 = norm(user2.city);
-
-    if (strictCity) {
-        // Same city required
-        if (!city1 || !city2 || city1 !== city2) return 0;
-        score += 40;
-    } else {
-        // City not required, but bonus if same
-        if (city1 && city2 && city1 === city2) {
-            score += 40;
-        } else {
-            score += 10; // Base score for different city
-        }
-    }
-
-    // Gender preference (always required)
+    // Gender preference (always required - opposite gender)
     const gender1 = norm(user1.gender);
     const gender2 = norm(user2.gender);
     const pref1 = norm(user1.genderPreference || "any");
@@ -200,27 +165,22 @@ function calculateCompatibilityScore(user1, user2, options = {}) {
     const ok2 = pref2 === "any" || pref2 === gender1;
 
     if (!ok1 || !ok2) return 0; // Gender must match
-    score += 40;
+    score += 50; // Base score for opposite gender match
 
-    // Age compatibility
-    const age1 = calculateAge(user1.dateOfBirth);
-    const age2 = calculateAge(user2.dateOfBirth);
+    // State matching
+    const state1 = norm(user1.city);
+    const state2 = norm(user2.city);
 
-    if (age1 && age2) {
-        const diff = Math.abs(age1 - age2);
-
-        if (maxAgeDiff !== null && diff > maxAgeDiff) {
-            return 0; // Age difference too large for this tier
-        }
-
-        // Bonus points for closer ages
-        if (diff <= 2) score += 20;
-        else if (diff <= 5) score += 15;
-        else if (diff <= 10) score += 10;
-        else score += 5;
+    if (strictCity) {
+        // Same state required for Tier 1
+        if (!state1 || !state2 || state1 !== state2) return 0;
+        score += 50; // Same state bonus
     } else {
-        // No DOB info - give base points
-        score += 5;
+        // Cross-state allowed for Tier 2, but bonus if same
+        if (state1 && state2 && state1 === state2) {
+            score += 50; // Same state bonus
+        }
+        // Different state still gets base score (50 from gender)
     }
 
     return score;

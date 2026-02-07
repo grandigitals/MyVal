@@ -338,34 +338,20 @@ const Matching = {
 
     // Calculate compatibility score
     calculateScore(user1, user2) {
-        // Same city required
-        if (user1.city?.toLowerCase() !== user2.city?.toLowerCase()) return 0;
-
-        // Gender preference match required
+        // Gender preference match required (opposite gender)
         const u1AcceptsU2 = user1.genderPreference === 'any' || user1.genderPreference === user2.gender;
         const u2AcceptsU1 = user2.genderPreference === 'any' || user2.genderPreference === user1.gender;
         if (!u1AcceptsU2 || !u2AcceptsU1) return 0;
 
-        let score = 80; // Base score
+        let score = 50; // Base score for opposite gender match
 
-        // Age bonus
-        const age1 = this.calculateAge(user1.dateOfBirth);
-        const age2 = this.calculateAge(user2.dateOfBirth);
-        const ageDiff = Math.abs(age1 - age2);
-        if (ageDiff <= 2) score += 20;
-        else if (ageDiff <= 5) score += 10;
+        // Same state gives higher priority
+        if (user1.city?.toLowerCase() === user2.city?.toLowerCase()) {
+            score += 50; // Same state bonus
+        }
+        // Cross-state still allowed but lower priority
 
         return score;
-    },
-
-    // Calculate age
-    calculateAge(dob) {
-        const birth = new Date(dob);
-        const today = new Date();
-        let age = today.getFullYear() - birth.getFullYear();
-        const m = today.getMonth() - birth.getMonth();
-        if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
-        return age;
     }
 };
 

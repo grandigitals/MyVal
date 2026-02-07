@@ -6,11 +6,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const form = document.getElementById('signup-form');
     const submitBtn = document.getElementById('signup-btn');
 
-    // Set max date for DOB (must be 18+)
-    const dobInput = document.getElementById('dateOfBirth');
-    const maxDate = new Date();
-    maxDate.setFullYear(maxDate.getFullYear() - 18);
-    dobInput.max = maxDate.toISOString().split('T')[0];
 
     form.addEventListener('submit', async function (e) {
         e.preventDefault();
@@ -23,7 +18,6 @@ document.addEventListener('DOMContentLoaded', function () {
         const phoneNumber = document.getElementById('phoneNumber').value.trim();
         const gender = document.getElementById('gender').value;
         const city = document.getElementById('city').value;
-        const dateOfBirth = document.getElementById('dateOfBirth').value;
         const ageConfirm = document.getElementById('ageConfirm').checked;
 
         // Auto-set gender preference (opposite gender)
@@ -35,11 +29,6 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        const age = calculateAge(dateOfBirth);
-        if (age < 18) {
-            showError('error-message', 'You must be at least 18 years old');
-            return;
-        }
 
         if (!isValidPhone(phoneNumber)) {
             showError('error-message', 'Please enter a valid phone number');
@@ -82,7 +71,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 gender: gender,
                 genderPreference: genderPreference, // Auto-set based on gender
                 city: city,
-                dateOfBirth: dateOfBirth,
                 ageVerified: true,
                 paymentStatus: 'unpaid',
                 paystackReference: null,

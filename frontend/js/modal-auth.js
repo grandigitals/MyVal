@@ -152,7 +152,6 @@ async function handleSignup(e) {
     const phoneNumber = document.getElementById('signup-phone').value.trim();
     const gender = document.getElementById('signup-gender').value;
     const city = document.getElementById('signup-city').value;
-    const dateOfBirth = document.getElementById('signup-dob').value;
     const ageConfirm = document.getElementById('signup-age').checked;
 
     const errorEl = document.getElementById('signup-error');
@@ -167,12 +166,6 @@ async function handleSignup(e) {
         return;
     }
 
-    const age = calculateAge(dateOfBirth);
-    if (age < 18) {
-        errorEl.textContent = 'You must be at least 18 years old';
-        errorEl.style.display = 'block';
-        return;
-    }
 
     if (!isValidPhone(phoneNumber)) {
         errorEl.textContent = 'Please enter a valid Nigerian phone number (e.g., 08012345678)';
@@ -220,7 +213,6 @@ async function handleSignup(e) {
             gender: gender,
             genderPreference: genderPreference,
             city: city,
-            dateOfBirth: dateOfBirth,
             ageVerified: true,
             paymentStatus: 'unpaid',
             paystackReference: null,

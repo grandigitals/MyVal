@@ -7,8 +7,8 @@ const { getAdminDb } = require("../services/firebase");
 
 const router = express.Router();
 
-// Earnings per paid signup (20% of ₦500)
-const EARNINGS_PER_SIGNUP = 100;
+// Earnings per paid signup (20% of ₦1,000)
+const EARNINGS_PER_SIGNUP = 200;
 
 // Admin email for payout management
 const ADMIN_EMAIL = "danielaleriwa@gmail.com";

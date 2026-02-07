@@ -50,26 +50,22 @@ const Matching = {
     calculateCompatibility(user1, user2) {
         let score = 0;
 
-        // 1. Location Match (REQUIRED - 40 points)
-        if (!this.checkLocationMatch(user1, user2)) {
-            return 0; // Must be same city
-        }
-        score += 40;
-
-        // 2. Gender Preference Match (REQUIRED - 40 points)
+        // 1. Gender Preference Match (REQUIRED - 50 points)
         if (!this.checkGenderPreferenceMatch(user1, user2)) {
-            return 0; // Must have compatible preferences
+            return 0; // Must have compatible preferences (opposite gender)
         }
-        score += 40;
+        score += 50;
 
-        // 3. Age Compatibility (PREFERRED - up to 20 points)
-        const ageScore = this.calculateAgeScore(user1, user2);
-        score += ageScore;
+        // 2. Location Match (PREFERRED - 50 points for same state, still matchable if different)
+        if (this.checkLocationMatch(user1, user2)) {
+            score += 50; // Same state bonus
+        }
+        // Cross-state users still get matched but with lower priority
 
         return score;
     },
 
-    // Check if users are in the same city
+    // Check if users are in the same state
     checkLocationMatch(user1, user2) {
         return user1.city && user2.city &&
             user1.city.toLowerCase() === user2.city.toLowerCase();
@@ -88,42 +84,6 @@ const Matching = {
     prefersGender(preference, gender) {
         if (preference === 'any') return true;
         return preference === gender;
-    },
-
-    // Calculate age compatibility score
-    calculateAgeScore(user1, user2) {
-        const age1 = this.calculateAge(user1.dateOfBirth);
-        const age2 = this.calculateAge(user2.dateOfBirth);
-
-        const ageDiff = Math.abs(age1 - age2);
-
-        // Perfect match (same age or 1 year diff)
-        if (ageDiff <= 1) return 20;
-
-        // Good match (within 3 years)
-        if (ageDiff <= 3) return 15;
-
-        // Acceptable (within 5 years)
-        if (ageDiff <= CONFIG.AGE_RANGE) return 10;
-
-        // Larger gap but still possible
-        if (ageDiff <= 10) return 5;
-
-        return 0;
-    },
-
-    // Calculate age from date of birth
-    calculateAge(dateOfBirth) {
-        const dob = new Date(dateOfBirth);
-        const today = new Date();
-        let age = today.getFullYear() - dob.getFullYear();
-        const monthDiff = today.getMonth() - dob.getMonth();
-
-        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
-            age--;
-        }
-
-        return age;
     },
 
     // Run matching for all unmatched paid users

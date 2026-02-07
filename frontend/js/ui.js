@@ -307,7 +307,7 @@ const UI = {
         // Action button
         let actionButton;
         if (user.paymentStatus !== 'paid') {
-            actionButton = `<button class="btn btn-primary btn-large" onclick="App.navigate('payment')">Complete Payment</button>`;
+            actionButton = `<button class="btn btn-primary btn-large" onclick="App.navigate('payment')">Get Matched</button>`;
         } else if (matchStatus.status === 'revealed') {
             actionButton = `<button class="btn btn-primary btn-large" onclick="App.navigate('reveal')">View Your Match 💗</button>`;
         } else {

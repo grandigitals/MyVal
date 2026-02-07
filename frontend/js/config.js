@@ -14,7 +14,7 @@ const CONFIG = {
 
     // Payment - Paystack
     PAYSTACK_PUBLIC_KEY: 'pk_live_5dc75e32458b1e76fd04b3ec74e9563255db81c9',
-    PAYMENT_AMOUNT: 50000, // Amount in kobo (₦500)
+    PAYMENT_AMOUNT: 100000, // Amount in kobo (₦1,000)
     PAYMENT_CURRENCY: 'NGN',
 
     // Firebase Configuration

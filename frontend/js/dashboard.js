@@ -59,7 +59,7 @@ async function loadDashboard(uid) {
     } else {
         paymentStatus.innerHTML = '<span class="badge badge-warning">Payment Required</span>';
         matchStatus.innerHTML = '<span class="badge badge-error">Awaiting Payment</span>';
-        actionContainer.innerHTML = '<a href="payment.html" class="btn btn-primary btn-large">Complete Payment</a>';
+        actionContainer.innerHTML = '<a href="payment.html" class="btn btn-primary btn-large">Get Matched</a>';
     }
 }
 
