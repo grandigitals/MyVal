@@ -347,11 +347,34 @@ const Matching = {
 
         // Same state gives higher priority
         if (user1.city?.toLowerCase() === user2.city?.toLowerCase()) {
-            score += 50; // Same state bonus
+            score += 30; // Same state bonus
         }
         // Cross-state still allowed but lower priority
 
+        // Age compatibility bonus (up to 20 points)
+        const age1 = this.calculateAge(user1.dateOfBirth);
+        const age2 = this.calculateAge(user2.dateOfBirth);
+        if (age1 && age2) {
+            const ageDiff = Math.abs(age1 - age2);
+            if (ageDiff <= 2) score += 20;
+            else if (ageDiff <= 5) score += 15;
+            else if (ageDiff <= 10) score += 10;
+            else score += 5;
+        }
+
         return score;
+    },
+
+    // Calculate age from date of birth
+    calculateAge(dob) {
+        if (!dob) return null;
+        const birth = new Date(dob);
+        if (isNaN(birth.getTime())) return null;
+        const today = new Date();
+        let age = today.getFullYear() - birth.getFullYear();
+        const m = today.getMonth() - birth.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+        return age;
     }
 };
 

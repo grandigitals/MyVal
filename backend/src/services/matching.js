@@ -135,7 +135,7 @@ function findBestMatch(user, candidates, options = {}) {
     const scored = candidates
         .map(candidate => ({
             user: candidate,
-            score: calculateCompatibilityScore(user, candidate, { strictCity, maxAgeDiff })
+            score: calculateCompatibilityScore(user, candidate, { strictCity })
         }))
         .filter(x => x.score > 0)
         .sort((a, b) => {
@@ -174,13 +174,28 @@ function calculateCompatibilityScore(user1, user2, options = {}) {
     if (strictCity) {
         // Same state required for Tier 1
         if (!state1 || !state2 || state1 !== state2) return 0;
-        score += 50; // Same state bonus
+        score += 30; // Same state bonus
     } else {
         // Cross-state allowed for Tier 2, but bonus if same
         if (state1 && state2 && state1 === state2) {
-            score += 50; // Same state bonus
+            score += 30; // Same state bonus
         }
         // Different state still gets base score (50 from gender)
+    }
+
+    // Age compatibility (bonus, not required)
+    const age1 = calculateAge(user1.dateOfBirth);
+    const age2 = calculateAge(user2.dateOfBirth);
+
+    if (age1 && age2) {
+        const diff = Math.abs(age1 - age2);
+        if (diff <= 2) score += 20;
+        else if (diff <= 5) score += 15;
+        else if (diff <= 10) score += 10;
+        else score += 5;
+    } else {
+        // No DOB info - give base points
+        score += 5;
     }
 
     return score;

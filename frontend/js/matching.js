@@ -56,11 +56,15 @@ const Matching = {
         }
         score += 50;
 
-        // 2. Location Match (PREFERRED - 50 points for same state, still matchable if different)
+        // 2. Location Match (PREFERRED - 30 points for same state, still matchable if different)
         if (this.checkLocationMatch(user1, user2)) {
-            score += 50; // Same state bonus
+            score += 30; // Same state bonus
         }
         // Cross-state users still get matched but with lower priority
+
+        // 3. Age Compatibility (PREFERRED - up to 20 points)
+        const ageScore = this.calculateAgeScore(user1, user2);
+        score += ageScore;
 
         return score;
     },
@@ -84,6 +88,35 @@ const Matching = {
     prefersGender(preference, gender) {
         if (preference === 'any') return true;
         return preference === gender;
+    },
+
+    // Calculate age compatibility score
+    calculateAgeScore(user1, user2) {
+        const age1 = this.calculateAge(user1.dateOfBirth);
+        const age2 = this.calculateAge(user2.dateOfBirth);
+
+        if (!age1 || !age2) return 5; // No DOB info, give base points
+
+        const ageDiff = Math.abs(age1 - age2);
+
+        if (ageDiff <= 2) return 20;
+        if (ageDiff <= 5) return 15;
+        if (ageDiff <= 10) return 10;
+        return 5;
+    },
+
+    // Calculate age from date of birth
+    calculateAge(dateOfBirth) {
+        if (!dateOfBirth) return null;
+        const dob = new Date(dateOfBirth);
+        if (isNaN(dob.getTime())) return null;
+        const today = new Date();
+        let age = today.getFullYear() - dob.getFullYear();
+        const monthDiff = today.getMonth() - dob.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+            age--;
+        }
+        return age;
     },
 
     // Run matching for all unmatched paid users
